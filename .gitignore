@@ -54,9 +54,6 @@ dkms.conf
 # debug information files
 *.dwo
 
-# Created by https://www.toptal.com/developers/gitignore/api/c++,visualstudiocode,clion
-# Edit at https://www.toptal.com/developers/gitignore?templates=c++,visualstudiocode,clion
-
 ### C++ ###
 # Prerequisites
 *.d
@@ -205,7 +202,6 @@ fabric.properties
 .idea/**/azureSettings.xml
 
 ### VisualStudioCode ###
-.vscode/*
 !.vscode/settings.json
 !.vscode/tasks.json
 !.vscode/launch.json
@@ -222,3 +218,6 @@ fabric.properties
 # Ignore all local history of files
 .history
 .ionide
+
+build
+!.vscode/*
