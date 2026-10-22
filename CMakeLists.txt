@@ -41,12 +41,15 @@ pico_set_program_name(rad-macro-pad "rad-macro-pad")
 pico_set_program_version(rad-macro-pad "0.1")
 
 # Modify the below lines to enable/disable output over UART/USB
-pico_enable_stdio_uart(rad-macro-pad 1)
-pico_enable_stdio_usb(rad-macro-pad 0)
+pico_enable_stdio_uart(rad-macro-pad 0)
+pico_enable_stdio_usb(rad-macro-pad 1)
 
 # Add the standard library to the build
 target_link_libraries(rad-macro-pad
-        pico_stdlib)
+    pico_stdlib
+    tinyusb_device
+    tinyusb_board
+)
 
 # Add the standard include files to the build
 target_include_directories(rad-macro-pad PRIVATE
