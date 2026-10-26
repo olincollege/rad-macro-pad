@@ -35,6 +35,10 @@ pico_sdk_init()
 
 # Add executable. Default name is the project name, version 0.1
 
+add_library(rotary-dial 
+    src/rotary-dial.c
+)
+
 add_executable(rad-macro-pad src/rad-macro-pad.c)
 
 pico_set_program_name(rad-macro-pad "rad-macro-pad")
@@ -45,14 +49,29 @@ pico_enable_stdio_uart(rad-macro-pad 0)
 pico_enable_stdio_usb(rad-macro-pad 1)
 
 # Add the standard library to the build
-target_link_libraries(rad-macro-pad
-    pico_stdlib
-    tinyusb_device
-    tinyusb_board
+
+target_link_libraries(rotary-dial
+    PUBLIC
+        pico_stdlib
+    PRIVATE
+        hardware_gpio
 )
 
+target_link_libraries(rad-macro-pad
+    rotary-dial
+    pico_stdlib
+    hardware_gpio
+)
+
+
 # Add the standard include files to the build
-target_include_directories(rad-macro-pad PRIVATE
+target_include_directories(rad-macro-pad
+    PRIVATE
+        ${CMAKE_CURRENT_LIST_DIR}
+)
+
+target_include_directories(rotary-dial
+    PRIVATE
         ${CMAKE_CURRENT_LIST_DIR}
 )
 
