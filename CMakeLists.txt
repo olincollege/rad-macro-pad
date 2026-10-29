@@ -35,14 +35,17 @@ pico_sdk_init()
 
 # Add executable. Default name is the project name, version 0.1
 
-add_executable(rad-macro-pad src/rad-macro-pad.c)
+add_executable(rad-macro-pad 
+        src/rad-macro-pad.c
+        src/key_switches.c
+)
 
 pico_set_program_name(rad-macro-pad "rad-macro-pad")
 pico_set_program_version(rad-macro-pad "0.1")
 
 # Modify the below lines to enable/disable output over UART/USB
-pico_enable_stdio_uart(rad-macro-pad 1)
-pico_enable_stdio_usb(rad-macro-pad 0)
+pico_enable_stdio_uart(rad-macro-pad 0)
+pico_enable_stdio_usb(rad-macro-pad 1)
 
 # Add the standard library to the build
 target_link_libraries(rad-macro-pad
