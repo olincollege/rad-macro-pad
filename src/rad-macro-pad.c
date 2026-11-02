@@ -10,7 +10,6 @@ typedef struct {
 } key_mapping_t;
 
 // Map GPIO 1 to 12 to USB keys
-// GPIO 1 - 12: Macro switches 1 to 12
 static const key_mapping_t KEY_MAP[NUM_KEYS] = {
     [1]  = { 0, HID_KEY_7 },
     [2]  = { 0, HID_KEY_8 },
@@ -30,6 +29,7 @@ static const key_mapping_t KEY_MAP[NUM_KEYS] = {
 void on_key_event(unsigned int key_index, bool is_pressed) {
     if (key_index >= NUM_KEYS) return;
 
+    // TODO: add conditional logic to handle encoder presses (GPIO 0) 
     if (is_pressed) {
         usb_hid_send_key(KEY_MAP[key_index].modifier, KEY_MAP[key_index].keycode);
     } else {
@@ -45,11 +45,17 @@ int main(void) {
     // Initialize USB HID stack
     usb_hid_init();
 
+    uint32_t last_key_poll = 0;
+    const uint32_t poll_interval_ms = 5; // Poll every 5ms 
     while (true) {
-        usb_hid_task();          // Handle USB events & status LED
-        poll_key_switch_press(); // Scan physical switches
-        sleep_ms(1);
+        // Run TinyUSB background engine continuously with 0ms latency
+        usb_hid_task();
+        // Non-blocking timer check for key switch polling
+        uint32_t now = to_ms_since_boot(get_absolute_time());
+        if (now - last_key_poll >= poll_interval_ms) {
+            last_key_poll = now;
+            poll_key_switch_press();
+        }
     }
-
     return 0;
 }

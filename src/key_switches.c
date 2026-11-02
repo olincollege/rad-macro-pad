@@ -1,11 +1,11 @@
 #include "pico/stdlib.h"
 #include "inc/key_switches.h"
 
-// Single global callback for all keys
+// Callback for key press/release
 static key_callback_t key_callback = NULL;
 static bool key_last_state[NUM_KEYS] = {false}; // false = unpressed, true = pressed
 
-// Register the single callback function to handle all keys
+// Register the callback function
 void key_switch_register_callback(key_callback_t cb) {
     key_callback = cb;
 }
