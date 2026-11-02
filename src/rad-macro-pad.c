@@ -1,40 +1,55 @@
 #include "pico/stdlib.h"
 #include <stdio.h>
 #include "inc/key_switches.h"
+#include "inc/usb_hid_keyboard.h"
 
-// One callback to handle any key event
-void on_key_pressed(uint key_index) {
-    printf("Key %u pressed!\n", key_index);
+// Key mapping struct for each switch index
+typedef struct {
+    uint8_t modifier; // e.g. KEYBOARD_MODIFIER_LEFTCTRL, or 0
+    uint8_t keycode;  // TinyUSB HID keycode (HID_KEY_*)
+} key_mapping_t;
 
-    switch (key_index) {
-        case 0:
-            // Rotary encoder push-button
-            printf("Rotary button pressed\n");
-            break;
-        case 1:
-            // Key 1 action
-            gpio_put(13, !gpio_get(13));
-            break;
-        case 2:
-            // Key 2 action
-            break;
-        default:
-            break;
+// Map GPIO 1 to 12 to USB keys
+// GPIO 1 - 12: Macro switches 1 to 12
+static const key_mapping_t KEY_MAP[NUM_KEYS] = {
+    [1]  = { 0, HID_KEY_7 },
+    [2]  = { 0, HID_KEY_8 },
+    [3]  = { 0, HID_KEY_9 },
+    [4]  = { 0, HID_KEY_4 },
+    [5]  = { 0, HID_KEY_5 },
+    [6]  = { 0, HID_KEY_6 },
+    [7]  = { 0, HID_KEY_1 },
+    [8]  = { 0, HID_KEY_2 },
+    [9]  = { 0, HID_KEY_3 },
+    [10] = { KEYBOARD_MODIFIER_LEFTCTRL, HID_KEY_C},  // Crtl + C
+    [11] = { 0, HID_KEY_0 }, 
+    [12] = { KEYBOARD_MODIFIER_LEFTCTRL, HID_KEY_V }, // Ctrl + V
+};
+
+// Callback invoked on any switch press or release
+void on_key_event(unsigned int key_index, bool is_pressed) {
+    if (key_index >= NUM_KEYS) return;
+
+    if (is_pressed) {
+        usb_hid_send_key(KEY_MAP[key_index].modifier, KEY_MAP[key_index].keycode);
+    } else {
+        usb_hid_release_key();
     }
 }
 
-int main() {
-    stdio_init_all();
-
-    // Initialize LED pin
-    gpio_init(13);
-    gpio_set_dir(13, GPIO_OUT);
-
+int main(void) {
+    // Initialize hardware drivers
     key_switch_init();
-    key_switch_register_callback(on_key_pressed); // Register once
+    key_switch_register_callback(on_key_event);
+
+    // Initialize USB HID stack
+    usb_hid_init();
 
     while (true) {
-        poll_key_switch_press();
-        sleep_ms(2);
+        usb_hid_task();          // Handle USB events & status LED
+        poll_key_switch_press(); // Scan physical switches
+        sleep_ms(1);
     }
+
+    return 0;
 }

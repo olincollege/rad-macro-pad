@@ -25,14 +25,13 @@ int poll_key_switch_press(void) {
         // Active-low: pressed when pin is LOW (0)
         bool is_pressed = !gpio_get(i);
 
-        // Edge detection: only fire when state transitions from released -> pressed
-        if (is_pressed && !key_last_state[i]) {
+        // Edge detection: fire when state transitions (press or release)
+        if (is_pressed != key_last_state[i]) {
             if (key_callback != NULL) {
-                key_callback(i); // Call the shared callback with the key index
+                key_callback(i, is_pressed);
             }
+            key_last_state[i] = is_pressed;
         }
-
-        key_last_state[i] = is_pressed;
     }
     return PICO_OK;
 }
