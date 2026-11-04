@@ -37,18 +37,24 @@ add_subdirectory(rp2040-oled-spi)
 
 # Add executable. Default name is the project name, version 0.1
 
+
 add_library(rotary-dial 
     src/rotary-dial.c
 )
 
-add_executable(rad-macro-pad src/rad-macro-pad.c)
+add_executable(rad-macro-pad
+        src/rad-macro-pad.c
+        src/key_switches.c
+        src/usb_descriptors.c
+        src/usb_hid_keyboard.c
+)
 
 pico_set_program_name(rad-macro-pad "rad-macro-pad")
 pico_set_program_version(rad-macro-pad "0.1")
 
 # Modify the below lines to enable/disable output over UART/USB
 pico_enable_stdio_uart(rad-macro-pad 0)
-pico_enable_stdio_usb(rad-macro-pad 1)
+pico_enable_stdio_usb(rad-macro-pad 0)
 
 # Add the standard library to the build
 
@@ -60,6 +66,8 @@ target_link_libraries(rotary-dial
 )
 
 target_link_libraries(rad-macro-pad
+    pico_stdlib
+    tinyusb_device
     rotary-dial
     rp2040-oled
     oled-gfx
@@ -77,7 +85,7 @@ target_include_directories(rad-macro-pad
 target_include_directories(rotary-dial
     PRIVATE
         ${CMAKE_CURRENT_LIST_DIR}
+        ${CMAKE_CURRENT_LIST_DIR}/inc
 )
 
 pico_add_extra_outputs(rad-macro-pad)
-
