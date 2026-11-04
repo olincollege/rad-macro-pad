@@ -49,6 +49,11 @@ add_executable(rad-macro-pad
         src/usb_hid_keyboard.c
 )
 
+target_include_directories(rad-macro-pad
+    PUBLIC
+        inc
+)
+
 pico_set_program_name(rad-macro-pad "rad-macro-pad")
 pico_set_program_version(rad-macro-pad "0.1")
 
