@@ -33,6 +33,8 @@ project(rad-macro-pad C CXX ASM)
 # Initialise the Raspberry Pi Pico SDK
 pico_sdk_init()
 
+add_subdirectory(rp2040-oled-spi)
+
 # Add executable. Default name is the project name, version 0.1
 
 add_library(rotary-dial 
@@ -59,6 +61,8 @@ target_link_libraries(rotary-dial
 
 target_link_libraries(rad-macro-pad
     rotary-dial
+    rp2040-oled
+    oled-gfx
     pico_stdlib
     hardware_gpio
 )
