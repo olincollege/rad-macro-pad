@@ -1,31 +1,41 @@
-#include "pico/stdlib.h"
-#include <stdio.h>
+#include "hardware/gpio.h"
+#include "pico/stdio.h"
+#include "rotary-dial.h"
+#include <pico/time.h>
 
-#ifndef LED_DELAY_MS
-#define LED_DELAY_MS 250
-#endif
+extern volatile int8_t state;
+extern volatile uint8_t turns_to_state_change;
+extern volatile bool last_state_a;
 
-int pico_led_init(void) {
-  gpio_init(13);
-  gpio_set_dir(13, GPIO_OUT);
-  return PICO_OK;
-}
+void init(void);
 
-// Turn the led on or off
-void pico_set_led(bool led_on) {
-
-  // Just set the GPIO on or off
-  gpio_put(13, led_on);
+void init(void) {
+  stdio_init_all();
+  gpio_init(ROTARY_DIAL_BUTTON);
+  gpio_set_dir(ROTARY_DIAL_BUTTON, GPIO_IN);
+  gpio_init(ROTARY_DIAL_ROT_A);
+  gpio_set_dir(ROTARY_DIAL_ROT_A, GPIO_IN);
+  gpio_init(ROTARY_DIAL_ROT_B);
+  gpio_set_dir(ROTARY_DIAL_ROT_B, GPIO_IN);
+  gpio_pull_up(ROTARY_DIAL_BUTTON);
+  gpio_pull_up(ROTARY_DIAL_ROT_A);
+  gpio_pull_up(ROTARY_DIAL_ROT_B);
 }
 
 int main() {
-  stdio_init_all();
-  int rc = pico_led_init();
-  hard_assert(rc == PICO_OK);
+  init();
+  // Record initial state of Rot A
+  last_state_a = gpio_get(ROTARY_DIAL_ROT_A);
+
+  gpio_set_irq_enabled_with_callback(ROTARY_DIAL_ROT_A,
+                                     GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL,
+                                     true, &encoder_callback);
+
+  bool last_button_state = true;
+
   while (true) {
-    pico_set_led(true);
-    sleep_ms(LED_DELAY_MS);
-    pico_set_led(false);
-    sleep_ms(LED_DELAY_MS);
+
+    // Small delay to prevent tight-looping the core
+    sleep_ms(10);
   }
 }
