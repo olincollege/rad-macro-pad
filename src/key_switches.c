@@ -1,4 +1,4 @@
-#include "inc/key_switches.h"
+#include "key_switches.h"
 #include "pico/stdlib.h"
 
 // Callback for key press/release

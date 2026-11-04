@@ -35,23 +35,18 @@ pico_sdk_init()
 
 add_subdirectory(rp2040-oled-spi)
 
+add_subdirectory(src)
+
 # Add executable. Default name is the project name, version 0.1
-
-
-add_library(rotary-dial 
-    src/rotary-dial.c
-)
 
 add_executable(rad-macro-pad
         src/rad-macro-pad.c
-        src/key_switches.c
-        src/usb_descriptors.c
-        src/usb_hid_keyboard.c
 )
 
 target_include_directories(rad-macro-pad
     PUBLIC
         inc
+        rp2040-oled-spi/include
 )
 
 pico_set_program_name(rad-macro-pad "rad-macro-pad")
@@ -63,34 +58,31 @@ pico_enable_stdio_usb(rad-macro-pad 0)
 
 # Add the standard library to the build
 
-target_link_libraries(rotary-dial
-    PUBLIC
-        pico_stdlib
-    PRIVATE
-        hardware_gpio
-)
+#include "gfx.h"
+#include "hardware/gpio.h"
+#include "hardware/spi.h"
+#include "inc/key_switches.h"
+#include "inc/usb_hid_keyboard.h"
+#include "pico/stdio.h"
+#include "pico/stdlib.h"
+#include "rotary-dial.h"
+#include "rp2040-oled-types.h"
+#include "rp2040-oled.h"
+#include <pico/time.h>
+#include <stdio.h>
 
 target_link_libraries(rad-macro-pad
-    pico_stdlib
-    tinyusb_device
-    rotary-dial
-    rp2040-oled
-    oled-gfx
-    pico_stdlib
-    hardware_gpio
-)
-
-
-# Add the standard include files to the build
-target_include_directories(rad-macro-pad
-    PRIVATE
-        ${CMAKE_CURRENT_LIST_DIR}
-)
-
-target_include_directories(rotary-dial
-    PRIVATE
-        ${CMAKE_CURRENT_LIST_DIR}
-        ${CMAKE_CURRENT_LIST_DIR}/inc
+    PUBLIC
+        oled-gfx
+        rp2040-oled
+        hardware_gpio
+        hardware_spi
+        pico_stdio
+        pico_stdlib
+        key_switches
+        usb_hid_keyboard
+        rotary-dial
+        pico_time
 )
 
 pico_add_extra_outputs(rad-macro-pad)

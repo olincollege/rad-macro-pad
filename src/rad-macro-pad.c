@@ -1,15 +1,20 @@
+
+#include <stdio.h>
+
 #include "gfx.h"
-#include "hardware/gpio.h"
-#include "hardware/spi.h"
-#include "inc/key_switches.h"
-#include "inc/usb_hid_keyboard.h"
-#include "pico/stdio.h"
-#include "pico/stdlib.h"
-#include "rotary-dial.h"
 #include "rp2040-oled-types.h"
 #include "rp2040-oled.h"
-#include <pico/time.h>
-#include <stdio.h>
+
+#include "hardware/gpio.h"
+#include "hardware/spi.h"
+#include "pico/stdio.h"
+#include "pico/stdlib.h"
+#include "pico/time.h"
+
+#include "key_switches.h"
+#include "usb_hid_keyboard.h"
+
+#include "rotary-dial.h"
 
 extern volatile int8_t state;
 extern volatile uint8_t turns_to_state_change;
