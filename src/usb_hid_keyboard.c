@@ -2,7 +2,7 @@
  * USB HID Keyboard implementation using TinyUSB
  */
 
-#include "inc/usb_hid_keyboard.h"
+#include "usb_hid_keyboard.h"
 #include "pico/stdlib.h"
 #include "tusb.h"
 #include "usb_descriptors.h"
