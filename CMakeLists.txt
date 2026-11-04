@@ -61,6 +61,8 @@ target_link_libraries(rotary-dial
 
 target_link_libraries(rad-macro-pad
     rotary-dial
+    rp2040-oled
+    oled-gfx
     pico_stdlib
     hardware_gpio
 )
