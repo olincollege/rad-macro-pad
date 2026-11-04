@@ -27,19 +27,11 @@ extern volatile bool last_state_a;
 #define DISPLAY_RESET 23
 #define DISPLAY_FREQ 10 * 1000 * 1000 // 10 MHz
 
-void init(void);
+// possibility: note that callbacks must be accessible somehow to main
 
-void init(void) {
+static void init(void) {
   stdio_init_all();
-  gpio_init(ROTARY_DIAL_BUTTON);
-  gpio_set_dir(ROTARY_DIAL_BUTTON, GPIO_IN);
-  gpio_init(ROTARY_DIAL_ROT_A);
-  gpio_set_dir(ROTARY_DIAL_ROT_A, GPIO_IN);
-  gpio_init(ROTARY_DIAL_ROT_B);
-  gpio_set_dir(ROTARY_DIAL_ROT_B, GPIO_IN);
-  gpio_pull_up(ROTARY_DIAL_BUTTON);
-  gpio_pull_up(ROTARY_DIAL_ROT_A);
-  gpio_pull_up(ROTARY_DIAL_ROT_B);
+  dial_init();
 }
 
 // Key mapping struct for each switch index
@@ -117,13 +109,17 @@ int main(void) {
   uint32_t last_key_poll = 0;
   const uint32_t poll_interval_ms = 5; // Poll every 5ms
   while (true) {
-    // Run TinyUSB background engine continuously with 0ms latency
-    usb_hid_task();
-    // Non-blocking timer check for key switch polling
-    uint32_t now = to_ms_since_boot(get_absolute_time());
-    if (now - last_key_poll >= poll_interval_ms) {
-      last_key_poll = now;
-      poll_key_switch_press();
+    tud_task(); // TinyUSB device background task
+    if (state != DEBUG) {
+      // Run TinyUSB background engine continuously with 0ms latency
+      usb_hid_task();
+      // Non-blocking timer check for key switch polling
+      uint32_t now = to_ms_since_boot(get_absolute_time());
+      if (now - last_key_poll >= poll_interval_ms) {
+        last_key_poll = now;
+        poll_key_switch_press();
+      }
+    } else {
     }
   }
   return 0;

@@ -25,6 +25,7 @@
 
 #include "usb_descriptors.h"
 #include "tusb.h"
+#include "tusb_config.h"
 
 /* A combination of interfaces must have a unique product id, since PC will save
  * device driver after the first plug. Same VID/PID with different interface e.g
@@ -47,9 +48,9 @@
 tusb_desc_device_t const desc_device = {.bLength = sizeof(tusb_desc_device_t),
                                         .bDescriptorType = TUSB_DESC_DEVICE,
                                         .bcdUSB = USB_BCD,
-                                        .bDeviceClass = 0x00,
-                                        .bDeviceSubClass = 0x00,
-                                        .bDeviceProtocol = 0x00,
+                                        .bDeviceClass = TUSB_CLASS_MISC,
+                                        .bDeviceSubClass = MISC_SUBCLASS_COMMON,
+                                        .bDeviceProtocol = MISC_PROTOCOL_IAD,
                                         .bMaxPacketSize0 =
                                             CFG_TUD_ENDPOINT0_SIZE,
 
@@ -88,11 +89,15 @@ uint8_t const *tud_hid_descriptor_report_cb(uint8_t instance) {
 // Configuration Descriptor
 //--------------------------------------------------------------------+
 
-enum { ITF_NUM_HID, ITF_NUM_TOTAL };
+enum { ITF_NUM_HID, ITF_NUM_CDC, ITF_NUM_CDC_DATA, ITF_NUM_TOTAL };
 
-#define CONFIG_TOTAL_LEN (TUD_CONFIG_DESC_LEN + TUD_HID_DESC_LEN)
+#define CONFIG_TOTAL_LEN                                                       \
+  (TUD_CONFIG_DESC_LEN + TUD_HID_DESC_LEN + TUD_CDC_DESC_LEN)
 
 #define EPNUM_HID 0x81
+#define EPNUM_CDC_NOTIF 0x82 // IN 2:  serial status, rarely used
+#define EPNUM_CDC_OUT 0x03   // OUT 3: computer to device
+#define EPNUM_CDC_IN 0x83    // IN 3:  device to computer, your debug data
 
 uint8_t const desc_configuration[] = {
     // Config number, interface count, string index, total length, attribute,
@@ -104,7 +109,9 @@ uint8_t const desc_configuration[] = {
     // address, size & polling interval
     TUD_HID_DESCRIPTOR(ITF_NUM_HID, 0, HID_ITF_PROTOCOL_NONE,
                        sizeof(desc_hid_report), EPNUM_HID,
-                       CFG_TUD_HID_EP_BUFSIZE, 5)};
+                       CFG_TUD_HID_EP_BUFSIZE, 5),
+    TUD_CDC_DESCRIPTOR(ITF_NUM_CDC, 4, EPNUM_CDC_NOTIF, 8, EPNUM_CDC_OUT,
+                       EPNUM_CDC_IN, CFG_TUD_CDC_RX_BUFSIZE)};
 
 #if TUD_OPT_HIGH_SPEED
 // Per USB specs: high speed capable device must report device_qualifier and
@@ -175,6 +182,7 @@ char const *string_desc_arr[] = {
     "rktrlng",                  // 1: Manufacturer
     "TinyUSB keyboard",         // 2: Product
     "123456",                   // 3: Serials, should use chip ID
+    "Rad Macro Pad Debug"       // 4: Name for port
 };
 
 static uint16_t _desc_str[32];

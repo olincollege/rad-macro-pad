@@ -25,3 +25,5 @@ extern volatile bool last_state_a;
  * Parameters are based on a GPIO IRQ callback (gpio_irq_callback_t).
  */
 void encoder_callback(uint gpio, uint32_t event_mask);
+
+void dial_init(void);
