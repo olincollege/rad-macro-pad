@@ -69,7 +69,7 @@ target_include_directories(keystroke_injection
 )
 
 target_link_libraries(keystroke_injection
-    PUBLIC
+    PRIVATE
         usb_hid_keyboard
         pico_time
         pico_stdlib
