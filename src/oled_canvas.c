@@ -66,10 +66,19 @@ void canvas_outline_rect(int x, int y, int w, int h, bool on) {
   canvas_fill_rect(x + w - 1, y, 1, h, on); // right
 }
 
+// extra pixels between tall characters, which otherwise look squished
+#define TALL_LETTER_SPACING 2
+
 // how much each font pixel is stretched for a text size
 static void text_scale(canvas_text_size_t size, int *sx, int *sy) {
   *sx = (size == TEXT_2X) ? 2 : 1;
   *sy = (size == TEXT_1X) ? 1 : 2;
+}
+
+// distance from one character's left edge to the next one's
+static int text_advance(canvas_text_size_t size, int sx) {
+  int spacing = (size == TEXT_TALL) ? TALL_LETTER_SPACING : 0;
+  return FONT_ADVANCE * sx + spacing;
 }
 
 static void draw_char(int x, int y, char c, int sx, int sy, bool on) {
@@ -89,8 +98,9 @@ void canvas_draw_text(int x, int y, const char *text, canvas_text_size_t size,
   int sx, sy;
   text_scale(size, &sx, &sy);
 
+  int advance = text_advance(size, sx);
   for (int i = 0; text[i] != '\0'; i++)
-    draw_char(x + i * FONT_ADVANCE * sx, y, text[i], sx, sy, on);
+    draw_char(x + i * advance, y, text[i], sx, sy, on);
 }
 
 int canvas_text_width(const char *text, canvas_text_size_t size) {
@@ -98,8 +108,10 @@ int canvas_text_width(const char *text, canvas_text_size_t size) {
   text_scale(size, &sx, &sy);
 
   int len = (int)strlen(text);
-  // leave out the blank column after the last character
-  return len == 0 ? 0 : (len * FONT_ADVANCE - 1) * sx;
+  // every character's step, except the last one, which only counts its
+  // visible columns
+  return len == 0 ? 0
+                  : (len - 1) * text_advance(size, sx) + FONT_GLYPH_COLUMNS * sx;
 }
 
 int canvas_text_height(canvas_text_size_t size) {
