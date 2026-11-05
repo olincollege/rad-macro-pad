@@ -117,6 +117,7 @@ target_link_libraries(oled_canvas
         oled-gfx
     PRIVATE
         oled-font
+        rp2040-oled
 )
 
 add_library(key_grid
@@ -168,6 +169,36 @@ target_link_libraries(mode_transition
         pico_time
 )
 
+add_library(sprites
+    sprites.c
+)
+
+target_include_directories(sprites
+    PUBLIC
+        ../inc
+)
+
+add_library(screen_prompt
+    screen_prompt.c
+)
+
+target_include_directories(screen_prompt
+    PUBLIC
+        ../inc
+        ../rp2040-oled-spi/include
+)
+
+target_link_libraries(screen_prompt
+    PRIVATE
+        board_state
+        key_grid
+        oled_canvas
+        sprites
+        keystroke_injection
+        usb_hid_keyboard
+        pico_time
+)
+
 add_library(ui
     ui.c
 )
@@ -184,6 +215,7 @@ target_link_libraries(ui
     PRIVATE
         oled_canvas
         screen_numpad
+        screen_prompt
         mode_transition
         rotary-dial
 )

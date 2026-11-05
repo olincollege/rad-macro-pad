@@ -54,3 +54,7 @@ void canvas_present(void);
 
 // sends only the pages and columns this rectangle touches
 void canvas_present_rect(int x, int y, int w, int h);
+
+// screen brightness, 0x00 (dimmest) to 0xff (full). leaves the picture alone
+#define CANVAS_CONTRAST_FULL 0xff
+void canvas_set_contrast(uint8_t contrast);

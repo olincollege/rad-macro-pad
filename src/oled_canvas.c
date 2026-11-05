@@ -4,6 +4,7 @@
 
 #include "font.h"
 #include "gfx.h"
+#include "rp2040-oled.h"
 
 // font_6x8 holds printable ascii from ' ' to '~' plus one more, 5 column
 // bytes each. characters are 6 wide with the blank column, and digits and
@@ -149,4 +150,9 @@ void canvas_present_rect(int x, int y, int w, int h) {
 
 void canvas_present(void) {
   canvas_present_rect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+}
+
+void canvas_set_contrast(uint8_t contrast) {
+  if (canvas_oled != NULL)
+    rp2040_oled_set_contrast(canvas_oled, contrast);
 }

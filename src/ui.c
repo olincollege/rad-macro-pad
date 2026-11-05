@@ -6,12 +6,13 @@
 #include "oled_canvas.h"
 #include "rotary-dial.h"
 #include "screen_numpad.h"
+#include "screen_prompt.h"
 
 // the mode the screen is showing, or animating toward. it can lag `state` by
 // one loop pass
 static int8_t target_mode;
 
-// placeholder until the prompt and debug screens exist
+// placeholder until the debug screen exists
 static void draw_mode_name(const char *name) {
   canvas_clear();
   int x = (CANVAS_WIDTH - canvas_text_width(name, TEXT_2X)) / 2;
@@ -26,7 +27,7 @@ static void draw_mode(int8_t mode) {
     screen_numpad_draw();
     break;
   case PROMPT_ENGINEER:
-    draw_mode_name("PROMPT");
+    screen_prompt_draw();
     break;
   default:
     draw_mode_name("DEBUG");
@@ -43,17 +44,24 @@ void ui_init(rp2040_oled_t *oled) {
 void ui_task(void) {
   int8_t current_mode = state; // read the dial's mode once
 
-  // the dial moved: animate from wherever the screen was headed. turning again
-  // mid-animation restarts it from there
+  // the dial moved: stop any splash or fade, then animate from wherever the
+  // screen was headed. turning again mid-animation restarts it from there
   if (current_mode != target_mode) {
+    screen_prompt_cancel();
     mode_transition_start(target_mode, current_mode);
     target_mode = current_mode;
     return;
   }
 
   // when the animation finishes, show the new mode's screen
-  if (mode_transition_running() && !mode_transition_task())
-    draw_mode(target_mode);
+  if (mode_transition_running()) {
+    if (!mode_transition_task())
+      draw_mode(target_mode);
+    return;
+  }
+
+  if (target_mode == PROMPT_ENGINEER)
+    screen_prompt_task();
 }
 
 void ui_on_key(unsigned key, bool pressed) {
@@ -63,4 +71,6 @@ void ui_on_key(unsigned key, bool pressed) {
 
   if (target_mode == NUMPAD)
     screen_numpad_on_key(key, pressed);
+  else if (target_mode == PROMPT_ENGINEER)
+    screen_prompt_on_key(key, pressed);
 }
