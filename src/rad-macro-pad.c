@@ -96,33 +96,58 @@ int main(void) {
 
   rp2040_oled_init(&oled);
 
-  // a 40x40 outline in the middle of the screen. render = true sends it now
-  rp2040_oled_draw_rectangle(&oled, 44, 12, 83, 51, OLED_COLOR_WHITE, false,
-                             true);
-
   // Initialize hardware drivers
   key_switch_init();
   key_switch_register_callback(on_key_event);
 
   // Initialize USB HID stack
   usb_hid_init();
+  usb_cdc_init();
 
   uint32_t last_key_poll = 0;
+  uint32_t last_print = 0;
   const uint32_t poll_interval_ms = 5; // Poll every 5ms
+  const uint32_t print_interval_ms = 30;
+  int8_t shown_state = 127; // not a real mode, so the first pass always draws
   while (true) {
-    tud_task(); // TinyUSB device background task
-    if (state != DEBUG) {
+    // tud_task(); // TinyUSB device background task
+
+    // redraw the mode number only when the mode changes. NUMPAD (-1) shows 0,
+    // PROMPT_ENGINEER (0) shows 1, DEBUG (1) shows 2
+    int8_t current_state = state;
+    if (current_state != shown_state) {
+      shown_state = current_state;
+      char mode_digit[1] = {(char)('0' + current_state + 1)};
+      rp2040_oled_clear(&oled);
+      rp2040_oled_write_string(&oled, 61, 28, mode_digit, 1, true);
+    }
+
+    switch (state) {
+    case NUMPAD: {
       // Run TinyUSB background engine continuously with 0ms latency
       usb_hid_task();
+
       // Non-blocking timer check for key switch polling
       uint32_t now = to_ms_since_boot(get_absolute_time());
       if (now - last_key_poll >= poll_interval_ms) {
         last_key_poll = now;
         poll_key_switch_press();
       }
-    } else {
-      println_cdc("hey");
-      sleep_ms(5);
+      break;
+    }
+    case PROMPT_ENGINEER: {
+      break;
+    }
+    case DEBUG: {
+      usb_cdc_task();
+      // nonblocking timer
+      uint32_t now = to_ms_since_boot(get_absolute_time());
+      if (now - last_print >= print_interval_ms) {
+        last_print = now;
+        println_cdc("hey");
+      }
+      break;
+    }
     }
   }
   return 0;

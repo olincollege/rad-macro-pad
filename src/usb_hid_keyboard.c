@@ -118,9 +118,4 @@ void tud_mount_cb(void) { blink_interval_ms = BLINK_MOUNTED; }
 
 void tud_umount_cb(void) { blink_interval_ms = BLINK_NOT_MOUNTED; }
 
-void tud_suspend_cb(bool remote_wakeup_en) {
-  (void)remote_wakeup_en;
-  blink_interval_ms = BLINK_SUSPENDED;
-}
-
 void tud_resume_cb(void) { blink_interval_ms = BLINK_MOUNTED; }

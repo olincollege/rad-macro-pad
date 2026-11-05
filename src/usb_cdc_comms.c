@@ -16,8 +16,9 @@
 static queue_t print_queue;
 static LineUnit active_packet;
 static bool partial_packet = false;
-// static size_t drop_counter = 0;
+
 static char print_data_pool[PRINT_DATA_STORAGE_SIZE];
+// pointer doesnt deadvance for finished messages
 static size_t current_pool_index = 0;
 
 void usb_cdc_init(void) {
@@ -26,7 +27,7 @@ void usb_cdc_init(void) {
 
 static bool cdc_write_process(void) {
   if (!partial_packet) {
-    if (!partial_packet && queue_is_empty(&print_queue)) {
+    if (queue_is_empty(&print_queue)) {
       current_pool_index = 0;
       return true;
     }
@@ -44,10 +45,11 @@ static bool cdc_write_process(void) {
     tud_cdc_write(active_packet.character_data, active_packet.len);
     partial_packet = false;
   } else {
-    // idea here: write as much as can (cdc_queue_free_space)
-    tud_cdc_write(active_packet.character_data, cdc_queue_free_space);
-    active_packet.character_data += cdc_queue_free_space;
-    active_packet.len -= cdc_queue_free_space;
+    // ideally adv == cdc_queue_free_space. better to not assume however
+    uint32_t adv =
+        tud_cdc_write(active_packet.character_data, cdc_queue_free_space);
+    active_packet.character_data += adv;
+    active_packet.len -= adv;
 
     partial_packet = true;
   }
@@ -57,10 +59,10 @@ static bool cdc_write_process(void) {
   return true;
 }
 
-static size_t advance_line_queue(const char *str, size_t len) {
-  int a;
-  return 0;
-}
+// static size_t advance_line_queue(const char *str, size_t len) {
+//   int a;
+//   return 0;
+// }
 
 bool printf_cdc(const char *format, ...) {
   if (!tud_cdc_connected() || queue_is_full(&print_queue))
@@ -72,10 +74,10 @@ bool printf_cdc(const char *format, ...) {
   size_t space_left_in_pool = PRINT_DATA_STORAGE_SIZE - current_pool_index;
   char *pool_data = &print_data_pool[current_pool_index];
   int length = vsnprintf(pool_data, space_left_in_pool, format, args);
-  if (length < 0 || (size_t)length >= space_left_in_pool) // fail
-    return false;
-
   va_end(args);
+  if (length < 0 || (size_t)length >= space_left_in_pool) { // fail
+    return false;
+  }
 
   LineUnit unit = {.character_data = pool_data, .len = (uint32_t)length};
 
@@ -101,4 +103,14 @@ void tud_cdc_line_state_cb(uint8_t itf, bool dtr, bool rts) {
 void usb_cdc_task(void) {
   tud_task();
   cdc_write_process();
+}
+
+void tud_suspend_cb(bool remote_wakeup_en) {
+  (void)remote_wakeup_en;
+  // Flush our local structures so old prints don't instantly burst
+  // out when the device is plugged back in later
+  queue_free(&print_queue);
+  queue_init(&print_queue, (uint)sizeof(LineUnit), QUEUE_SIZE);
+  current_pool_index = 0;
+  partial_packet = false;
 }
