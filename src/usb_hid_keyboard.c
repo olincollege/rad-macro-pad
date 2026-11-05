@@ -39,7 +39,10 @@ void usb_hid_init(void) {
   tusb_init();
 }
 
-void usb_hid_task(void) { led_blinking_task(); }
+void usb_hid_task(void) {
+  tud_task();
+  led_blinking_task();
+}
 
 bool usb_hid_is_ready(void) { return tud_hid_ready(); }
 

@@ -111,7 +111,7 @@ uint8_t const desc_configuration[] = {
                        sizeof(desc_hid_report), EPNUM_HID,
                        CFG_TUD_HID_EP_BUFSIZE, 5),
     TUD_CDC_DESCRIPTOR(ITF_NUM_CDC, 4, EPNUM_CDC_NOTIF, 8, EPNUM_CDC_OUT,
-                       EPNUM_CDC_IN, CFG_TUD_CDC_RX_BUFSIZE)};
+                       EPNUM_CDC_IN, CFG_TUD_CDC_EP_BUFSIZE)};
 
 #if TUD_OPT_HIGH_SPEED
 // Per USB specs: high speed capable device must report device_qualifier and

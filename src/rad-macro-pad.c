@@ -12,6 +12,7 @@
 #include "pico/time.h"
 
 #include "key_switches.h"
+#include "usb_cdc_comms.h"
 #include "usb_hid_keyboard.h"
 
 #include "rotary-dial.h"
@@ -120,6 +121,8 @@ int main(void) {
         poll_key_switch_press();
       }
     } else {
+      println_cdc("hey");
+      sleep_ms(5);
     }
   }
   return 0;

@@ -58,3 +58,20 @@ target_link_libraries(usb_hid_keyboard
         pico_stdlib
         usb_descriptors
 )
+
+add_library(usb_cdc_comms
+    usb_cdc_comms.c
+)
+
+target_include_directories(usb_cdc_comms
+    PUBLIC
+        ../inc
+)
+
+target_link_libraries(usb_cdc_comms
+    PUBLIC
+        tinyusb_device
+    PRIVATE
+        pico_util
+        usb_descriptors
+)
