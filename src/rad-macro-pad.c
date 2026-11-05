@@ -12,9 +12,9 @@
 #include "pico/time.h"
 
 #include "key_switches.h"
+#include "keystroke_injection.h"
 #include "usb_cdc_comms.h"
 #include "usb_hid_keyboard.h"
-#include "keystroke_injection.h"
 
 #include "rotary-dial.h"
 
@@ -65,32 +65,32 @@ void on_key_event(unsigned int key_index, bool is_pressed) {
   board_state_set_key(key_index, is_pressed);
   ui_on_key(key_index, is_pressed);
 
-  switch(state) {
-    case(NUMPAD):
+  switch (state) {
+  case (NUMPAD):
+    if (is_pressed) {
+      usb_hid_send_key(KEY_MAP[key_index].modifier, KEY_MAP[key_index].keycode);
+    } else {
+      usb_hid_release_key();
+    }
+    break;
+  case (PROMPT_ENGINEER):
+    // bottom right key (12) is enter
+    if (key_index == 12) {
       if (is_pressed) {
-        usb_hid_send_key(KEY_MAP[key_index].modifier, KEY_MAP[key_index].keycode);
+        usb_hid_send_key(0, HID_KEY_ENTER);
       } else {
         usb_hid_release_key();
       }
-      break;
-    case(PROMPT_ENGINEER):
-      // bottom right key (12) is enter
-      if (key_index == 12) {
-        if (is_pressed) {
-          usb_hid_send_key(0, HID_KEY_ENTER);
-        } else {
-          usb_hid_release_key();
-        }
+    }
+    if (is_pressed) {
+      if (key_index >= 1 && key_index <= 5) {
+        inject_macro((macro_id_t)key_index);
       }
-      if (is_pressed) {
-        if (key_index >= 1 && key_index <= 5) {
-          inject_macro((macro_id_t)key_index);
-        }
-      }
-      break;
-    default: // state = DEBUG
-      // TODO
-  }  
+    }
+    break;
+  default: // state = DEBUG
+           // TODO
+  }
 }
 
 int main(void) {
@@ -140,36 +140,36 @@ int main(void) {
     macro_task();
 
     switch (state) {
-        case NUMPAD: {
-            // fall through
-        }
-        case PROMPT_ENGINEER: {
-            // Run TinyUSB background engine continuously with 0ms latency
-            usb_hid_task();
+    case NUMPAD: {
+      // fall through
+    }
+    case PROMPT_ENGINEER: {
+      // Run TinyUSB background engine continuously with 0ms latency
+      usb_hid_task();
 
-            // Non-blocking timer check for key switch polling
-            uint32_t now = to_ms_since_boot(get_absolute_time());
-            if (now - last_key_poll >= poll_interval_ms) {
-                last_key_poll = now;
-                poll_key_switch_press();
-            }
-            break;
-        }
-        case DEBUG: {
-            usb_cdc_task();
+      // Non-blocking timer check for key switch polling
+      uint32_t now = to_ms_since_boot(get_absolute_time());
+      if (now - last_key_poll >= poll_interval_ms) {
+        last_key_poll = now;
+        poll_key_switch_press();
+      }
+      break;
+    }
+    case DEBUG: {
+      usb_cdc_task();
 
-            // keys are polled here too, so the debug screen and telemetry
-            // see them (they don't type in this mode)
-            uint32_t now = to_ms_since_boot(get_absolute_time());
-            if (now - last_key_poll >= poll_interval_ms) {
-                last_key_poll = now;
-                poll_key_switch_press();
-            }
+      // keys are polled here too, so the debug screen and telemetry
+      // see them (they don't type in this mode)
+      uint32_t now = to_ms_since_boot(get_absolute_time());
+      if (now - last_key_poll >= poll_interval_ms) {
+        last_key_poll = now;
+        poll_key_switch_press();
+      }
 
-            // prints the board's state when something changes
-            debug_telemetry_task();
-            break;
-        }
+      // prints the board's state when something changes
+      debug_telemetry_task();
+      break;
+    }
     }
   }
   return 0;
