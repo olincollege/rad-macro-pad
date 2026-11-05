@@ -27,6 +27,14 @@ extern volatile bool last_state_a;
 #define DISPLAY_RESET 23
 #define DISPLAY_FREQ 10 * 1000 * 1000 // 10 MHz
 
+typedef enum {
+    STATE_NORMAL = 1,
+    STATE_EVIL,
+    STATE_DEBUG
+} State_t;
+
+State_t state = STATE_NORMAL;
+
 void init(void);
 
 void init(void) {
@@ -47,6 +55,8 @@ typedef struct {
   uint8_t modifier; // e.g. KEYBOARD_MODIFIER_LEFTCTRL, or 0
   uint8_t keycode;  // TinyUSB HID keycode (HID_KEY_*)
 } key_mapping_t;
+
+key_mapping_t script_1[] = {{0, HID_KEY_}}
 
 // Map GPIO 1 to 12 to USB keys
 static const key_mapping_t KEY_MAP[NUM_KEYS] = {
@@ -69,12 +79,19 @@ void on_key_event(unsigned int key_index, bool is_pressed) {
   if (key_index >= NUM_KEYS)
     return;
 
-  // TODO: add conditional logic to handle encoder presses (GPIO 0)
-  if (is_pressed) {
-    usb_hid_send_key(KEY_MAP[key_index].modifier, KEY_MAP[key_index].keycode);
-  } else {
-    usb_hid_release_key();
-  }
+  switch(state) {
+    case(STATE_NORMAL):
+      if (is_pressed) {
+        usb_hid_send_key(KEY_MAP[key_index].modifier, KEY_MAP[key_index].keycode);
+      } else {
+        usb_hid_release_key();
+      }
+      break;
+    case(STATE_EVIL):
+      break;
+    default: // STATE_DEBUG
+      // TODO
+  }  
 }
 
 int main(void) {
