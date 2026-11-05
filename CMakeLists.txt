@@ -86,6 +86,7 @@ target_link_libraries(rad-macro-pad
         rotary-dial
         pico_time
         board_state
+        debug_telemetry
         ui
 )
 

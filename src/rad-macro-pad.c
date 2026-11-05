@@ -19,6 +19,7 @@
 #include "rotary-dial.h"
 
 #include "board_state.h"
+#include "debug_telemetry.h"
 #include "ui.h"
 
 extern volatile int8_t state;
@@ -128,9 +129,7 @@ int main(void) {
   usb_cdc_init();
 
   uint32_t last_key_poll = 0;
-  uint32_t last_print = 0;
   const uint32_t poll_interval_ms = 5; // Poll every 5ms
-  const uint32_t print_interval_ms = 30;
   while (true) {
     // tud_task(); // TinyUSB device background task
 
@@ -158,12 +157,17 @@ int main(void) {
         }
         case DEBUG: {
             usb_cdc_task();
-            // nonblocking timer
+
+            // keys are polled here too, so the debug screen and telemetry
+            // see them (they don't type in this mode)
             uint32_t now = to_ms_since_boot(get_absolute_time());
-            if (now - last_print >= print_interval_ms) {
-                last_print = now;
-                println_cdc("hey");
+            if (now - last_key_poll >= poll_interval_ms) {
+                last_key_poll = now;
+                poll_key_switch_press();
             }
+
+            // prints the board's state when something changes
+            debug_telemetry_task();
             break;
         }
     }

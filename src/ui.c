@@ -5,21 +5,13 @@
 #include "mode_transition.h"
 #include "oled_canvas.h"
 #include "rotary-dial.h"
+#include "screen_debug.h"
 #include "screen_numpad.h"
 #include "screen_prompt.h"
 
 // the mode the screen is showing, or animating toward. it can lag `state` by
 // one loop pass
 static int8_t target_mode;
-
-// placeholder until the debug screen exists
-static void draw_mode_name(const char *name) {
-  canvas_clear();
-  int x = (CANVAS_WIDTH - canvas_text_width(name, TEXT_2X)) / 2;
-  int y = (CANVAS_HEIGHT - canvas_text_height(TEXT_2X)) / 2;
-  canvas_draw_text(x, y, name, TEXT_2X, true);
-  canvas_present();
-}
 
 static void draw_mode(int8_t mode) {
   switch (mode) {
@@ -30,7 +22,7 @@ static void draw_mode(int8_t mode) {
     screen_prompt_draw();
     break;
   default:
-    draw_mode_name("DEBUG");
+    screen_debug_draw();
     break;
   }
 }
@@ -62,6 +54,8 @@ void ui_task(void) {
 
   if (target_mode == PROMPT_ENGINEER)
     screen_prompt_task();
+  else if (target_mode == DEBUG)
+    screen_debug_task();
 }
 
 void ui_on_key(unsigned key, bool pressed) {
@@ -69,6 +63,7 @@ void ui_on_key(unsigned key, bool pressed) {
   if (mode_transition_running())
     return;
 
+  // the debug screen picks up key changes on its own refresh
   if (target_mode == NUMPAD)
     screen_numpad_on_key(key, pressed);
   else if (target_mode == PROMPT_ENGINEER)

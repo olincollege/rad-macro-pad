@@ -199,6 +199,43 @@ target_link_libraries(screen_prompt
         pico_time
 )
 
+add_library(debug_telemetry
+    debug_telemetry.c
+)
+
+target_include_directories(debug_telemetry
+    PUBLIC
+        ../inc
+)
+
+target_link_libraries(debug_telemetry
+    PRIVATE
+        board_state
+        usb_cdc_comms
+        rotary-dial
+        pico_time
+)
+
+add_library(screen_debug
+    screen_debug.c
+)
+
+target_include_directories(screen_debug
+    PUBLIC
+        ../inc
+        ../rp2040-oled-spi/include
+)
+
+target_link_libraries(screen_debug
+    PRIVATE
+        board_state
+        debug_telemetry
+        key_grid
+        oled_canvas
+        rotary-dial
+        pico_time
+)
+
 add_library(ui
     ui.c
 )
@@ -216,6 +253,7 @@ target_link_libraries(ui
         oled_canvas
         screen_numpad
         screen_prompt
+        screen_debug
         mode_transition
         rotary-dial
 )
