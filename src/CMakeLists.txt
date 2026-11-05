@@ -92,3 +92,80 @@ target_link_libraries(usb_cdc_comms
         pico_util
         usb_descriptors
 )
+
+add_library(board_state
+    board_state.c
+)
+
+target_include_directories(board_state
+    PUBLIC
+        ../inc
+)
+
+add_library(oled_canvas
+    oled_canvas.c
+)
+
+target_include_directories(oled_canvas
+    PUBLIC
+        ../inc
+        ../rp2040-oled-spi/include
+)
+
+target_link_libraries(oled_canvas
+    PUBLIC
+        oled-gfx
+    PRIVATE
+        oled-font
+)
+
+add_library(key_grid
+    key_grid.c
+)
+
+target_include_directories(key_grid
+    PUBLIC
+        ../inc
+        ../rp2040-oled-spi/include
+)
+
+target_link_libraries(key_grid
+    PUBLIC
+        oled_canvas
+)
+
+add_library(screen_numpad
+    screen_numpad.c
+)
+
+target_include_directories(screen_numpad
+    PUBLIC
+        ../inc
+        ../rp2040-oled-spi/include
+)
+
+target_link_libraries(screen_numpad
+    PRIVATE
+        board_state
+        key_grid
+        oled_canvas
+)
+
+add_library(ui
+    ui.c
+)
+
+target_include_directories(ui
+    PUBLIC
+        ../inc
+        ../rp2040-oled-spi/include
+)
+
+target_link_libraries(ui
+    PUBLIC
+        oled-gfx
+    PRIVATE
+        oled_canvas
+        screen_numpad
+        rotary-dial
+)

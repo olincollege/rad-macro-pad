@@ -18,6 +18,9 @@
 
 #include "rotary-dial.h"
 
+#include "board_state.h"
+#include "ui.h"
+
 extern volatile int8_t state;
 extern volatile uint8_t turns_to_state_change;
 extern volatile bool last_state_a;
@@ -56,6 +59,10 @@ static const key_mapping_t KEY_MAP[NUM_KEYS] = {
 void on_key_event(unsigned int key_index, bool is_pressed) {
   if (key_index >= NUM_KEYS)
     return;
+
+  // remember the key and update the screen before sending anything
+  board_state_set_key(key_index, is_pressed);
+  ui_on_key(key_index, is_pressed);
 
   switch(state) {
     case(NUMPAD):
@@ -110,6 +117,7 @@ int main(void) {
   };
 
   rp2040_oled_init(&oled);
+  ui_init(&oled);
 
   // Initialize hardware drivers
   key_switch_init();
@@ -123,19 +131,11 @@ int main(void) {
   uint32_t last_print = 0;
   const uint32_t poll_interval_ms = 5; // Poll every 5ms
   const uint32_t print_interval_ms = 30;
-  int8_t shown_state = 127; // not a real mode, so the first pass always draws
   while (true) {
     // tud_task(); // TinyUSB device background task
 
-    // redraw the mode number only when the mode changes. NUMPAD (-1) shows 0,
-    // PROMPT_ENGINEER (0) shows 1, DEBUG (1) shows 2
-    int8_t current_state = state;
-    if (current_state != shown_state) {
-      shown_state = current_state;
-      char mode_digit[1] = {(char)('0' + current_state + 1)};
-      rp2040_oled_clear(&oled);
-      rp2040_oled_write_string(&oled, 61, 28, mode_digit, 1, true);
-    }
+    // redraws the screen when the mode changes
+    ui_task();
 
     // sends the running macro a step at a time, in every mode
     macro_task();
