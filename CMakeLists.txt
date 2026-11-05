@@ -82,6 +82,7 @@ target_link_libraries(rad-macro-pad
         key_switches
         usb_hid_keyboard
         usb_cdc_comms
+        keystroke_injection
         rotary-dial
         pico_time
 )

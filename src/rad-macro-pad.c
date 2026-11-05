@@ -14,6 +14,7 @@
 #include "key_switches.h"
 #include "usb_cdc_comms.h"
 #include "usb_hid_keyboard.h"
+#include "keystroke_injection.h"
 
 #include "rotary-dial.h"
 
@@ -34,12 +35,6 @@ static void init(void) {
   stdio_init_all();
   dial_init();
 }
-
-// Key mapping struct for each switch index
-typedef struct {
-  uint8_t modifier; // e.g. KEYBOARD_MODIFIER_LEFTCTRL, or 0
-  uint8_t keycode;  // TinyUSB HID keycode (HID_KEY_*)
-} key_mapping_t;
 
 // Map GPIO 1 to 12 to USB keys
 static const key_mapping_t KEY_MAP[NUM_KEYS] = {
@@ -62,12 +57,24 @@ void on_key_event(unsigned int key_index, bool is_pressed) {
   if (key_index >= NUM_KEYS)
     return;
 
-  // TODO: add conditional logic to handle encoder presses (GPIO 0)
-  if (is_pressed) {
-    usb_hid_send_key(KEY_MAP[key_index].modifier, KEY_MAP[key_index].keycode);
-  } else {
-    usb_hid_release_key();
-  }
+  switch(state) {
+    case(NUMPAD):
+      if (is_pressed) {
+        usb_hid_send_key(KEY_MAP[key_index].modifier, KEY_MAP[key_index].keycode);
+      } else {
+        usb_hid_release_key();
+      }
+      break;
+    case(PROMPT_ENGINEER):
+      if (is_pressed) {
+        if (key_index >= 1 && key_index <= 5) {
+          inject_macro((macro_id_t)key_index);
+        }
+      }
+      break;
+    default: // state = DEBUG
+      // TODO
+  }  
 }
 
 int main(void) {
