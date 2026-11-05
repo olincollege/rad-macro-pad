@@ -136,20 +136,19 @@ void send_macro_script(const key_mapping_t *script, size_t length) {
         }
         usb_hid_send_key(script[i].modifier, script[i].keycode);
         tud_task();
-
-        // Additional sleep after Windows/GUI or ENTER button press
-        if ((script[i].keycode == HID_KEY_GUI_LEFT) || 
-            (script[i].keycode == HID_KEY_ENTER)) {
-            sleep_ms(2500);
-        }
-        sleep_ms(10);
+        sleep_ms(15);
 
         while (!tud_hid_ready()) {
             tud_task();
         }
         usb_hid_release_key();
         tud_task();
-        sleep_ms(10);
+        sleep_ms(15);
+        // Additional sleep after Windows/GUI or ENTER button press
+        if ((script[i].keycode == HID_KEY_GUI_LEFT) || 
+            (script[i].keycode == HID_KEY_ENTER)) {
+            sleep_ms(2000);
+        }
     }
 }
 
