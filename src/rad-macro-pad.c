@@ -130,31 +130,31 @@ int main(void) {
     }
 
     switch (state) {
-    case NUMPAD: {
-      // Run TinyUSB background engine continuously with 0ms latency
-      usb_hid_task();
+        case NUMPAD: {
+            // fall through
+        }
+        case PROMPT_ENGINEER: {
+            // Run TinyUSB background engine continuously with 0ms latency
+            usb_hid_task();
 
-      // Non-blocking timer check for key switch polling
-      uint32_t now = to_ms_since_boot(get_absolute_time());
-      if (now - last_key_poll >= poll_interval_ms) {
-        last_key_poll = now;
-        poll_key_switch_press();
-      }
-      break;
-    }
-    case PROMPT_ENGINEER: {
-      break;
-    }
-    case DEBUG: {
-      usb_cdc_task();
-      // nonblocking timer
-      uint32_t now = to_ms_since_boot(get_absolute_time());
-      if (now - last_print >= print_interval_ms) {
-        last_print = now;
-        println_cdc("hey");
-      }
-      break;
-    }
+            // Non-blocking timer check for key switch polling
+            uint32_t now = to_ms_since_boot(get_absolute_time());
+            if (now - last_key_poll >= poll_interval_ms) {
+                last_key_poll = now;
+                poll_key_switch_press();
+            }
+            break;
+        }
+        case DEBUG: {
+            usb_cdc_task();
+            // nonblocking timer
+            uint32_t now = to_ms_since_boot(get_absolute_time());
+            if (now - last_print >= print_interval_ms) {
+                last_print = now;
+                println_cdc("hey");
+            }
+            break;
+        }
     }
   }
   return 0;
