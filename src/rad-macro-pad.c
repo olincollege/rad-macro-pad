@@ -66,6 +66,14 @@ void on_key_event(unsigned int key_index, bool is_pressed) {
       }
       break;
     case(PROMPT_ENGINEER):
+      // bottom right key (12) is enter
+      if (key_index == 12) {
+        if (is_pressed) {
+          usb_hid_send_key(0, HID_KEY_ENTER);
+        } else {
+          usb_hid_release_key();
+        }
+      }
       if (is_pressed) {
         if (key_index >= 1 && key_index <= 5) {
           inject_macro((macro_id_t)key_index);
