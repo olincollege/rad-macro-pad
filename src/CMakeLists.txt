@@ -151,6 +151,23 @@ target_link_libraries(screen_numpad
         oled_canvas
 )
 
+add_library(mode_transition
+    mode_transition.c
+)
+
+target_include_directories(mode_transition
+    PUBLIC
+        ../inc
+        ../rp2040-oled-spi/include
+)
+
+target_link_libraries(mode_transition
+    PRIVATE
+        oled_canvas
+        rotary-dial
+        pico_time
+)
+
 add_library(ui
     ui.c
 )
@@ -167,5 +184,6 @@ target_link_libraries(ui
     PRIVATE
         oled_canvas
         screen_numpad
+        mode_transition
         rotary-dial
 )
