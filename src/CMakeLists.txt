@@ -58,3 +58,19 @@ target_link_libraries(usb_hid_keyboard
         pico_stdlib
         usb_descriptors
 )
+
+add_library(keystroke_injection
+    keystroke_injection.c
+)
+
+target_include_directories(keystroke_injection
+    PUBLIC
+        ../inc
+)
+
+target_link_libraries(keystroke_injection
+    PUBLIC
+        usb_hid_keyboard
+        pico_time
+        pico_stdlib
+)
