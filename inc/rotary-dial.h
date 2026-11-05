@@ -8,7 +8,7 @@
 #define ROTARY_DIAL_ROT_B 18
 
 // constants
-#define MAX_STEPS 4
+#define MAX_STEPS 3
 
 enum { NUMPAD = -1, PROMPT_ENGINEER = 0, DEBUG = 1 };
 
@@ -25,3 +25,5 @@ extern volatile bool last_state_a;
  * Parameters are based on a GPIO IRQ callback (gpio_irq_callback_t).
  */
 void encoder_callback(uint gpio, uint32_t event_mask);
+
+void dial_init(void);

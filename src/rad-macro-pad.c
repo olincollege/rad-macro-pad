@@ -12,6 +12,7 @@
 #include "pico/time.h"
 
 #include "key_switches.h"
+#include "usb_cdc_comms.h"
 #include "usb_hid_keyboard.h"
 
 #include "rotary-dial.h"
@@ -27,19 +28,11 @@ extern volatile bool last_state_a;
 #define DISPLAY_RESET 23
 #define DISPLAY_FREQ 10 * 1000 * 1000 // 10 MHz
 
-void init(void);
+// possibility: note that callbacks must be accessible somehow to main
 
-void init(void) {
+static void init(void) {
   stdio_init_all();
-  gpio_init(ROTARY_DIAL_BUTTON);
-  gpio_set_dir(ROTARY_DIAL_BUTTON, GPIO_IN);
-  gpio_init(ROTARY_DIAL_ROT_A);
-  gpio_set_dir(ROTARY_DIAL_ROT_A, GPIO_IN);
-  gpio_init(ROTARY_DIAL_ROT_B);
-  gpio_set_dir(ROTARY_DIAL_ROT_B, GPIO_IN);
-  gpio_pull_up(ROTARY_DIAL_BUTTON);
-  gpio_pull_up(ROTARY_DIAL_ROT_A);
-  gpio_pull_up(ROTARY_DIAL_ROT_B);
+  dial_init();
 }
 
 // Key mapping struct for each switch index
@@ -103,27 +96,58 @@ int main(void) {
 
   rp2040_oled_init(&oled);
 
-  // a 40x40 outline in the middle of the screen. render = true sends it now
-  rp2040_oled_draw_rectangle(&oled, 44, 12, 83, 51, OLED_COLOR_WHITE, false,
-                             true);
-
   // Initialize hardware drivers
   key_switch_init();
   key_switch_register_callback(on_key_event);
 
   // Initialize USB HID stack
   usb_hid_init();
+  usb_cdc_init();
 
   uint32_t last_key_poll = 0;
+  uint32_t last_print = 0;
   const uint32_t poll_interval_ms = 5; // Poll every 5ms
+  const uint32_t print_interval_ms = 30;
+  int8_t shown_state = 127; // not a real mode, so the first pass always draws
   while (true) {
-    // Run TinyUSB background engine continuously with 0ms latency
-    usb_hid_task();
-    // Non-blocking timer check for key switch polling
-    uint32_t now = to_ms_since_boot(get_absolute_time());
-    if (now - last_key_poll >= poll_interval_ms) {
-      last_key_poll = now;
-      poll_key_switch_press();
+    // tud_task(); // TinyUSB device background task
+
+    // redraw the mode number only when the mode changes. NUMPAD (-1) shows 0,
+    // PROMPT_ENGINEER (0) shows 1, DEBUG (1) shows 2
+    int8_t current_state = state;
+    if (current_state != shown_state) {
+      shown_state = current_state;
+      char mode_digit[1] = {(char)('0' + current_state + 1)};
+      rp2040_oled_clear(&oled);
+      rp2040_oled_write_string(&oled, 61, 28, mode_digit, 1, true);
+    }
+
+    switch (state) {
+    case NUMPAD: {
+      // Run TinyUSB background engine continuously with 0ms latency
+      usb_hid_task();
+
+      // Non-blocking timer check for key switch polling
+      uint32_t now = to_ms_since_boot(get_absolute_time());
+      if (now - last_key_poll >= poll_interval_ms) {
+        last_key_poll = now;
+        poll_key_switch_press();
+      }
+      break;
+    }
+    case PROMPT_ENGINEER: {
+      break;
+    }
+    case DEBUG: {
+      usb_cdc_task();
+      // nonblocking timer
+      uint32_t now = to_ms_since_boot(get_absolute_time());
+      if (now - last_print >= print_interval_ms) {
+        last_print = now;
+        println_cdc("hey");
+      }
+      break;
+    }
     }
   }
   return 0;

@@ -40,7 +40,7 @@ void usb_hid_init(void) {
 }
 
 void usb_hid_task(void) {
-  tud_task(); // TinyUSB device background task
+  tud_task();
   led_blinking_task();
 }
 
@@ -117,10 +117,5 @@ void tud_hid_set_report_cb(uint8_t instance, uint8_t report_id,
 void tud_mount_cb(void) { blink_interval_ms = BLINK_MOUNTED; }
 
 void tud_umount_cb(void) { blink_interval_ms = BLINK_NOT_MOUNTED; }
-
-void tud_suspend_cb(bool remote_wakeup_en) {
-  (void)remote_wakeup_en;
-  blink_interval_ms = BLINK_SUSPENDED;
-}
 
 void tud_resume_cb(void) { blink_interval_ms = BLINK_MOUNTED; }
