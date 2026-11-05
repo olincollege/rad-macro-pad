@@ -92,3 +92,168 @@ target_link_libraries(usb_cdc_comms
         pico_util
         usb_descriptors
 )
+
+add_library(board_state
+    board_state.c
+)
+
+target_include_directories(board_state
+    PUBLIC
+        ../inc
+)
+
+add_library(oled_canvas
+    oled_canvas.c
+)
+
+target_include_directories(oled_canvas
+    PUBLIC
+        ../inc
+        ../rp2040-oled-spi/include
+)
+
+target_link_libraries(oled_canvas
+    PUBLIC
+        oled-gfx
+    PRIVATE
+        oled-font
+        rp2040-oled
+)
+
+add_library(key_grid
+    key_grid.c
+)
+
+target_include_directories(key_grid
+    PUBLIC
+        ../inc
+        ../rp2040-oled-spi/include
+)
+
+target_link_libraries(key_grid
+    PUBLIC
+        oled_canvas
+)
+
+add_library(screen_numpad
+    screen_numpad.c
+)
+
+target_include_directories(screen_numpad
+    PUBLIC
+        ../inc
+        ../rp2040-oled-spi/include
+)
+
+target_link_libraries(screen_numpad
+    PRIVATE
+        board_state
+        key_grid
+        oled_canvas
+)
+
+add_library(mode_transition
+    mode_transition.c
+)
+
+target_include_directories(mode_transition
+    PUBLIC
+        ../inc
+        ../rp2040-oled-spi/include
+)
+
+target_link_libraries(mode_transition
+    PRIVATE
+        oled_canvas
+        rotary-dial
+        pico_time
+)
+
+add_library(sprites
+    sprites.c
+)
+
+target_include_directories(sprites
+    PUBLIC
+        ../inc
+)
+
+add_library(screen_prompt
+    screen_prompt.c
+)
+
+target_include_directories(screen_prompt
+    PUBLIC
+        ../inc
+        ../rp2040-oled-spi/include
+)
+
+target_link_libraries(screen_prompt
+    PRIVATE
+        board_state
+        key_grid
+        oled_canvas
+        sprites
+        keystroke_injection
+        usb_hid_keyboard
+        pico_time
+)
+
+add_library(debug_telemetry
+    debug_telemetry.c
+)
+
+target_include_directories(debug_telemetry
+    PUBLIC
+        ../inc
+)
+
+target_link_libraries(debug_telemetry
+    PRIVATE
+        board_state
+        usb_cdc_comms
+        rotary-dial
+        pico_time
+)
+
+add_library(screen_debug
+    screen_debug.c
+)
+
+target_include_directories(screen_debug
+    PUBLIC
+        ../inc
+        ../rp2040-oled-spi/include
+)
+
+target_link_libraries(screen_debug
+    PRIVATE
+        board_state
+        debug_telemetry
+        key_grid
+        oled_canvas
+        rotary-dial
+        pico_time
+)
+
+add_library(ui
+    ui.c
+)
+
+target_include_directories(ui
+    PUBLIC
+        ../inc
+        ../rp2040-oled-spi/include
+)
+
+target_link_libraries(ui
+    PUBLIC
+        oled-gfx
+    PRIVATE
+        oled_canvas
+        screen_numpad
+        screen_prompt
+        screen_debug
+        mode_transition
+        rotary-dial
+)

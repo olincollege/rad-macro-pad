@@ -5,11 +5,10 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-// Initialize USB device stack and status LED
+// Initialize USB device stack
 void usb_hid_init(void);
 
-// Must be called repeatedly in the main loop to handle USB stack events and LED
-// blinking
+// Must be called repeatedly in the main loop to handle USB stack events
 void usb_hid_task(void);
 
 // Send a keyboard keypress report (with optional modifier, e.g.

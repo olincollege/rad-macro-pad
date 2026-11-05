@@ -7,42 +7,9 @@
 #include "tusb.h"
 #include "usb_descriptors.h"
 
-#define STATUS_LED_PIN 13
+void usb_hid_init(void) { tusb_init(); }
 
-// LED Blink pattern
-enum {
-  BLINK_NOT_MOUNTED = 250, // device not mounted (fast blink)
-  BLINK_MOUNTED = 1000,    // device mounted (slow pulse)
-  BLINK_SUSPENDED = 2500,  // device suspended
-};
-
-static uint32_t blink_interval_ms = BLINK_NOT_MOUNTED;
-
-static void led_blinking_task(void) {
-  static uint32_t start_ms = 0;
-
-  if (!blink_interval_ms)
-    return;
-
-  uint32_t now = to_ms_since_boot(get_absolute_time());
-  if (now - start_ms < blink_interval_ms)
-    return;
-  start_ms += blink_interval_ms;
-
-  gpio_put(STATUS_LED_PIN, !gpio_get(STATUS_LED_PIN));
-}
-
-void usb_hid_init(void) {
-  gpio_init(STATUS_LED_PIN);
-  gpio_set_dir(STATUS_LED_PIN, GPIO_OUT);
-
-  tusb_init();
-}
-
-void usb_hid_task(void) {
-  tud_task();
-  led_blinking_task();
-}
+void usb_hid_task(void) { tud_task(); }
 
 bool usb_hid_is_ready(void) { return tud_hid_ready(); }
 
@@ -89,33 +56,14 @@ uint16_t tud_hid_get_report_cb(uint8_t instance, uint8_t report_id,
   return 0;
 }
 
+// required by TinyUSB. the computer uses it to send lock-key lights (caps lock
+// and so on), which this keyboard doesn't use
 void tud_hid_set_report_cb(uint8_t instance, uint8_t report_id,
                            hid_report_type_t report_type, uint8_t const *buffer,
                            uint16_t bufsize) {
   (void)instance;
-
-  if (report_type == HID_REPORT_TYPE_OUTPUT &&
-      report_id == REPORT_ID_KEYBOARD) {
-    if (bufsize < 1)
-      return;
-
-    uint8_t const kbd_leds = buffer[0];
-    if (kbd_leds & KEYBOARD_LED_CAPSLOCK) {
-      blink_interval_ms = 0;
-      gpio_put(STATUS_LED_PIN, true);
-    } else {
-      gpio_put(STATUS_LED_PIN, false);
-      blink_interval_ms = BLINK_MOUNTED;
-    }
-  }
+  (void)report_id;
+  (void)report_type;
+  (void)buffer;
+  (void)bufsize;
 }
-
-//--------------------------------------------------------------------+
-// TinyUSB Device Callbacks
-//--------------------------------------------------------------------+
-
-void tud_mount_cb(void) { blink_interval_ms = BLINK_MOUNTED; }
-
-void tud_umount_cb(void) { blink_interval_ms = BLINK_NOT_MOUNTED; }
-
-void tud_resume_cb(void) { blink_interval_ms = BLINK_MOUNTED; }
