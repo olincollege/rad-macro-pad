@@ -129,6 +129,9 @@ int main(void) {
       rp2040_oled_write_string(&oled, 61, 28, mode_digit, 1, true);
     }
 
+    // sends the running macro a step at a time, in every mode
+    macro_task();
+
     switch (state) {
         case NUMPAD: {
             // fall through

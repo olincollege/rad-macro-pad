@@ -21,11 +21,18 @@ typedef enum {
     MACRO_GROK
 } macro_id_t;
 
-// Send an arbitrary sequence of key mappings over USB HID
+// Start sending an arbitrary sequence of key mappings over USB HID. Returns
+// right away; macro_task() does the sending. Ignored if a macro is running
 void send_macro_script(const key_mapping_t *script, size_t length);
 
 // Helper function to dispatch defined macro scripts by ID
 void inject_macro(macro_id_t macro_id);
+
+// Sends the running macro one step at a time. Call on every main loop pass
+void macro_task(void);
+
+// True while a macro is still being typed
+bool macro_is_running(void);
 
 #endif /* KEYSTROKE_INJECTION_H_ */
 
