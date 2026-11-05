@@ -8,7 +8,7 @@
 #define ROTARY_DIAL_ROT_B 18
 
 // constants
-#define MAX_STEPS 4
+#define MAX_STEPS 3
 
 enum { NUMPAD = -1, PROMPT_ENGINEER = 0, DEBUG = 1 };
 

@@ -29,8 +29,8 @@ void encoder_callback(uint gpio, uint32_t event_mask) {
 
   // filter out potential bouncing or double triggers
   if (current_state_a != last_state_a) {
-    // if Rot A != Rot B -> clockwise
-    if (gpio_get(ROTARY_DIAL_ROT_B) != current_state_a) {
+    // if Rot A == Rot B -> clockwise
+    if (gpio_get(ROTARY_DIAL_ROT_B) == current_state_a) {
       curr_dir = CLOCKWISE;
       if (curr_dir == last_dir) {
         turns_to_state_change++;
