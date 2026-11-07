@@ -128,27 +128,82 @@ static const key_mapping_t script_grok[SIZE_SCRIPT_GROK] = {
     {0, HID_KEY_ENTER},
 };
 
-void send_macro_script(const key_mapping_t *script, size_t length) {
-    for (size_t i = 0; i < length; i++) {
-        // Wait until USB endpoint is ready
-        while (!tud_hid_ready()) {
-            tud_task();
-        }
-        usb_hid_send_key(script[i].modifier, script[i].keycode);
-        tud_task();
-        sleep_ms(15);
+#define KEY_HOLD_MS 15    // how long each key stays pressed
+#define KEY_GAP_MS 15     // pause after each release
+#define LONG_PAUSE_MS 2000 // extra pause after GUI or ENTER, so apps can open
 
-        while (!tud_hid_ready()) {
-            tud_task();
-        }
+// each key goes through these steps in order, then the next key starts
+typedef enum {
+    STEP_PRESS,   // waiting for the endpoint, then press
+    STEP_HOLD,    // holding the key for KEY_HOLD_MS
+    STEP_RELEASE, // waiting for the endpoint, then release
+    STEP_GAP,     // waiting before the next key
+} macro_step_t;
+
+static const key_mapping_t *active_script = NULL; // NULL = no macro running
+static size_t active_length = 0;
+static size_t active_index = 0;
+static macro_step_t active_step = STEP_PRESS;
+static absolute_time_t wait_until;
+
+// starts a macro. macro_task() sends it over the next few passes of the loop
+void send_macro_script(const key_mapping_t *script, size_t length) {
+    if (active_script != NULL || script == NULL || length == 0)
+        return; // a macro is already running, or there's nothing to send
+
+    active_script = script;
+    active_length = length;
+    active_index = 0;
+    active_step = STEP_PRESS;
+}
+
+bool macro_is_running(void) { return active_script != NULL; }
+
+// does at most one step and returns, so the main loop never waits here
+void macro_task(void) {
+    if (active_script == NULL)
+        return;
+
+    const key_mapping_t *key = &active_script[active_index];
+
+    switch (active_step) {
+    case STEP_PRESS:
+        if (!tud_hid_ready())
+            return;
+        usb_hid_send_key(key->modifier, key->keycode);
+        wait_until = make_timeout_time_ms(KEY_HOLD_MS);
+        active_step = STEP_HOLD;
+        break;
+
+    case STEP_HOLD:
+        if (!time_reached(wait_until))
+            return;
+        active_step = STEP_RELEASE;
+        break;
+
+    case STEP_RELEASE: {
+        if (!tud_hid_ready())
+            return;
         usb_hid_release_key();
-        tud_task();
-        sleep_ms(15);
-        // Additional sleep after Windows/GUI or ENTER button press
-        if ((script[i].keycode == HID_KEY_GUI_LEFT) || 
-            (script[i].keycode == HID_KEY_ENTER)) {
-            sleep_ms(2000);
+        uint32_t gap_ms = KEY_GAP_MS;
+        // Additional pause after Windows/GUI or ENTER button press
+        if ((key->keycode == HID_KEY_GUI_LEFT) ||
+            (key->keycode == HID_KEY_ENTER)) {
+            gap_ms += LONG_PAUSE_MS;
         }
+        wait_until = make_timeout_time_ms(gap_ms);
+        active_step = STEP_GAP;
+        break;
+    }
+
+    case STEP_GAP:
+        if (!time_reached(wait_until))
+            return;
+        active_index++;
+        if (active_index >= active_length)
+            active_script = NULL; // finished
+        active_step = STEP_PRESS;
+        break;
     }
 }
 

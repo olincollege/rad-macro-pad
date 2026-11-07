@@ -85,6 +85,9 @@ target_link_libraries(rad-macro-pad
         keystroke_injection
         rotary-dial
         pico_time
+        board_state
+        debug_telemetry
+        ui
 )
 
 pico_add_extra_outputs(rad-macro-pad)

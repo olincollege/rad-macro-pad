@@ -12,11 +12,15 @@
 #include "pico/time.h"
 
 #include "key_switches.h"
+#include "keystroke_injection.h"
 #include "usb_cdc_comms.h"
 #include "usb_hid_keyboard.h"
-#include "keystroke_injection.h"
 
 #include "rotary-dial.h"
+
+#include "board_state.h"
+#include "debug_telemetry.h"
+#include "ui.h"
 
 extern volatile int8_t state;
 extern volatile uint8_t turns_to_state_change;
@@ -57,24 +61,36 @@ void on_key_event(unsigned int key_index, bool is_pressed) {
   if (key_index >= NUM_KEYS)
     return;
 
-  switch(state) {
-    case(NUMPAD):
+  // remember the key and update the screen before sending anything
+  board_state_set_key(key_index, is_pressed);
+  ui_on_key(key_index, is_pressed);
+
+  switch (state) {
+  case (NUMPAD):
+    if (is_pressed) {
+      usb_hid_send_key(KEY_MAP[key_index].modifier, KEY_MAP[key_index].keycode);
+    } else {
+      usb_hid_release_key();
+    }
+    break;
+  case (PROMPT_ENGINEER):
+    // bottom right key (12) is enter
+    if (key_index == 12) {
       if (is_pressed) {
-        usb_hid_send_key(KEY_MAP[key_index].modifier, KEY_MAP[key_index].keycode);
+        usb_hid_send_key(0, HID_KEY_ENTER);
       } else {
         usb_hid_release_key();
       }
-      break;
-    case(PROMPT_ENGINEER):
-      if (is_pressed) {
-        if (key_index >= 1 && key_index <= 5) {
-          inject_macro((macro_id_t)key_index);
-        }
+    }
+    if (is_pressed) {
+      if (key_index >= 1 && key_index <= 5) {
+        inject_macro((macro_id_t)key_index);
       }
-      break;
-    default: // state = DEBUG
-      // TODO
-  }  
+    }
+    break;
+  default: // state = DEBUG
+           // TODO
+  }
 }
 
 int main(void) {
@@ -102,6 +118,7 @@ int main(void) {
   };
 
   rp2040_oled_init(&oled);
+  ui_init(&oled);
 
   // Initialize hardware drivers
   key_switch_init();
@@ -112,49 +129,47 @@ int main(void) {
   usb_cdc_init();
 
   uint32_t last_key_poll = 0;
-  uint32_t last_print = 0;
   const uint32_t poll_interval_ms = 5; // Poll every 5ms
-  const uint32_t print_interval_ms = 30;
-  int8_t shown_state = 127; // not a real mode, so the first pass always draws
   while (true) {
     // tud_task(); // TinyUSB device background task
 
-    // redraw the mode number only when the mode changes. NUMPAD (-1) shows 0,
-    // PROMPT_ENGINEER (0) shows 1, DEBUG (1) shows 2
-    int8_t current_state = state;
-    if (current_state != shown_state) {
-      shown_state = current_state;
-      char mode_digit[1] = {(char)('0' + current_state + 1)};
-      rp2040_oled_clear(&oled);
-      rp2040_oled_write_string(&oled, 61, 28, mode_digit, 1, true);
-    }
+    // redraws the screen when the mode changes
+    ui_task();
+
+    // sends the running macro a step at a time, in every mode
+    macro_task();
 
     switch (state) {
-        case NUMPAD: {
-            // fall through
-        }
-        case PROMPT_ENGINEER: {
-            // Run TinyUSB background engine continuously with 0ms latency
-            usb_hid_task();
+    case NUMPAD: {
+      // fall through
+    }
+    case PROMPT_ENGINEER: {
+      // Run TinyUSB background engine continuously with 0ms latency
+      usb_hid_task();
 
-            // Non-blocking timer check for key switch polling
-            uint32_t now = to_ms_since_boot(get_absolute_time());
-            if (now - last_key_poll >= poll_interval_ms) {
-                last_key_poll = now;
-                poll_key_switch_press();
-            }
-            break;
-        }
-        case DEBUG: {
-            usb_cdc_task();
-            // nonblocking timer
-            uint32_t now = to_ms_since_boot(get_absolute_time());
-            if (now - last_print >= print_interval_ms) {
-                last_print = now;
-                println_cdc("hey");
-            }
-            break;
-        }
+      // Non-blocking timer check for key switch polling
+      uint32_t now = to_ms_since_boot(get_absolute_time());
+      if (now - last_key_poll >= poll_interval_ms) {
+        last_key_poll = now;
+        poll_key_switch_press();
+      }
+      break;
+    }
+    case DEBUG: {
+      usb_cdc_task();
+
+      // keys are polled here too, so the debug screen and telemetry
+      // see them (they don't type in this mode)
+      uint32_t now = to_ms_since_boot(get_absolute_time());
+      if (now - last_key_poll >= poll_interval_ms) {
+        last_key_poll = now;
+        poll_key_switch_press();
+      }
+
+      // prints the board's state when something changes
+      debug_telemetry_task();
+      break;
+    }
     }
   }
   return 0;
