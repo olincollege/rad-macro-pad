@@ -1,18 +1,36 @@
+/**
+ * @file debug_telemetry.h
+ * @brief DEBUG mode's serial output.
+ *
+ * Prints the board's state as a block of lines over USB CDC whenever something
+ * changes, when DEBUG mode starts, and when a terminal opens.
+ */
 #pragma once
 
 #include <stdbool.h>
 #include <stdint.h>
 
-// DEBUG mode's serial output: prints the board's state as a block of lines
-// whenever something changes, when DEBUG mode starts, and when a terminal
-// opens
-
-// call on every main loop pass while in DEBUG mode
+/**
+ * @brief Prints a new state block if one is due.
+ *
+ * Call on every main loop pass while in DEBUG mode. A gap of more than 100 ms
+ * between calls counts as DEBUG mode starting again.
+ */
 void debug_telemetry_task(void);
 
-// true while a terminal has the serial port open
+/**
+ * @brief Tells whether a terminal has the serial port open.
+ *
+ * @return true while a terminal is connected.
+ */
 bool debug_telemetry_terminal_open(void);
 
-// how many state changes couldn't be sent right away because the print queue
-// was full. each one is retried, so this counts delays, not lost changes
+/**
+ * @brief Counts state changes that couldn't be sent right away.
+ *
+ * A change isn't sent right away when the print queue is full. Each one is
+ * retried, so this counts delays, not lost changes.
+ *
+ * @return Number of delayed prints since boot.
+ */
 uint32_t debug_telemetry_dropped(void);

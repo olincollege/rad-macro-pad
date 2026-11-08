@@ -1,14 +1,10 @@
 
-#include <stdio.h>
-
-#include "gfx.h"
 #include "rp2040-oled-types.h"
 #include "rp2040-oled.h"
 
 #include "hardware/gpio.h"
 #include "hardware/spi.h"
 #include "pico/stdio.h"
-#include "pico/stdlib.h"
 #include "pico/time.h"
 
 #include "key_switches.h"
@@ -21,40 +17,6 @@
 #include "board_state.h"
 #include "debug_telemetry.h"
 #include "ui.h"
-
-extern volatile int8_t state;
-extern volatile uint8_t turns_to_state_change;
-extern volatile bool last_state_a;
-
-#define DISPLAY_SCLK 26
-#define DISPLAY_MOSI 27
-#define DISPLAY_CHIP_SELECT 22
-#define DISPLAY_DC 24
-#define DISPLAY_RESET 23
-#define DISPLAY_FREQ 10 * 1000 * 1000 // 10 MHz
-
-// possibility: note that callbacks must be accessible somehow to main
-
-static void init(void) {
-  stdio_init_all();
-  dial_init();
-}
-
-// Map GPIO 1 to 12 to USB keys
-static const key_mapping_t KEY_MAP[NUM_KEYS] = {
-    [1] = {0, HID_KEY_7},
-    [2] = {0, HID_KEY_8},
-    [3] = {0, HID_KEY_9},
-    [4] = {0, HID_KEY_4},
-    [5] = {0, HID_KEY_5},
-    [6] = {0, HID_KEY_6},
-    [7] = {0, HID_KEY_1},
-    [8] = {0, HID_KEY_2},
-    [9] = {0, HID_KEY_3},
-    [10] = {KEYBOARD_MODIFIER_LEFTCTRL, HID_KEY_C}, // Crtl + C
-    [11] = {0, HID_KEY_0},
-    [12] = {KEYBOARD_MODIFIER_LEFTCTRL, HID_KEY_V}, // Ctrl + V
-};
 
 // Callback invoked on any switch press or release
 void on_key_event(unsigned int key_index, bool is_pressed) {
@@ -93,9 +55,17 @@ void on_key_event(unsigned int key_index, bool is_pressed) {
   }
 }
 
-int main(void) {
-
-  init();
+/**
+ * @brief Brings up every peripheral.
+ *
+ * Starts stdio, the dial and its interrupt, the display and UI, the key
+ * switches, and the USB HID and CDC stacks.
+ *
+ * @param oled Display to start. Its config fields must already be set.
+ */
+static void init(rp2040_oled_t *oled) {
+  stdio_init_all();
+  dial_init();
   // Record initial state of Rot A
   last_state_a = gpio_get(ROTARY_DIAL_ROT_A);
 
@@ -103,7 +73,19 @@ int main(void) {
                                      GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL,
                                      true, &encoder_callback);
 
-  bool last_button_state = true;
+  rp2040_oled_init(oled);
+  ui_init(oled);
+
+  // Initialize hardware drivers
+  key_switch_init();
+  key_switch_register_callback(on_key_event);
+
+  // Initialize USB HID stack
+  usb_hid_init();
+  usb_cdc_init();
+}
+
+int main(void) {
 
   // the macropad's screen wiring. fields left out start at 0
   rp2040_oled_t oled = {
@@ -113,26 +95,16 @@ int main(void) {
       .cs_pin = DISPLAY_CHIP_SELECT,
       .dc_pin = DISPLAY_DC,
       .reset_pin = DISPLAY_RESET,
-      .baudrate = DISPLAY_FREQ / 10,
+      .baudrate = DISPLAY_FREQ,
       .use_doublebuf = false,
   };
 
-  rp2040_oled_init(&oled);
-  ui_init(&oled);
-
-  // Initialize hardware drivers
-  key_switch_init();
-  key_switch_register_callback(on_key_event);
-
-  // Initialize USB HID stack
-  usb_hid_init();
-  usb_cdc_init();
+  init(&oled);
 
   uint32_t last_key_poll = 0;
   const uint32_t poll_interval_ms = 5; // Poll every 5ms
-  while (true) {
-    // tud_task(); // TinyUSB device background task
 
+  while (true) {
     // redraws the screen when the mode changes
     ui_task();
 
