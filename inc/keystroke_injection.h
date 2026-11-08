@@ -8,7 +8,7 @@
 
 // Key mapping struct for keystroke sequences and layouts
 typedef struct {
-    uint8_t modifier; // e.g. KEYBOARD_MODIFIER_LEFTCTRL, or 0
+    uint8_t modifier; // e.g. KEYBOARD_MODIFIER_LEFTCTRL, or 0 if no modifier
     uint8_t keycode;  // TinyUSB HID keycode (HID_KEY_*)
 } key_mapping_t;
 
