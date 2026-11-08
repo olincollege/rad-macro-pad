@@ -9,7 +9,7 @@ target_include_directories(rotary-dial
 
 target_link_libraries(rotary-dial
     PUBLIC
-        pico_stdlib
+        pico_base_headers
     PRIVATE
         hardware_gpio
 )
@@ -26,6 +26,8 @@ target_include_directories(key_switches
 target_link_libraries(key_switches
     PRIVATE
         pico_stdlib
+    PUBLIC
+        tinyusb_device
 )
 
 add_library(usb_descriptors
@@ -100,6 +102,11 @@ add_library(board_state
 target_include_directories(board_state
     PUBLIC
         ../inc
+)
+
+target_link_libraries(board_state
+    PUBLIC
+        pico_base_headers
 )
 
 add_library(oled_canvas
