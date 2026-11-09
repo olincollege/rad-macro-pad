@@ -1,3 +1,7 @@
+/**
+ * @file screen_prompt.c
+ * @brief PROMPT ENGINEER mode's screen, splashes and fade.
+ */
 #include "screen_prompt.h"
 
 #include <stddef.h>
@@ -8,6 +12,7 @@
 #include "keystroke_injection.h"
 #include "oled_canvas.h"
 #include "pico/time.h"
+#include "pico/types.h"
 #include "sprites.h"
 
 #define SPLASH_HOLD_MS 1000 // logo stays this long after the macro finishes
@@ -20,16 +25,16 @@
 
 #define KEY_NO_MISTAKES 1
 
-// what each key shows. keys left out are empty cells
-typedef struct {
-  const uint8_t *icon;   // grid icon, or NULL
-  const char *label;     // grid text when there's no icon, or NULL
-  const uint8_t *splash; // full screen logo, or NULL for no splash
-  const char *name;      // shown next to the splash logo
-} prompt_key_t;
+/** @brief What a key shows. Keys left out of PROMPT_KEYS are empty cells. */
+typedef struct prompt_key_t {
+  const uint8_t *icon;   // Grid icon, or NULL
+  const char *label;     // Grid text when there's no icon, or NULL
+  const uint8_t *splash; // Full screen logo, or NULL for no splash
+  const char *name;      // Shown next to the splash logo
+} PromptKey;
 
 // keys 1 to 5 match macro_id_t in keystroke_injection.h
-static const prompt_key_t PROMPT_KEYS[KEY_GRID_LAST_KEY + 1] = {
+static const PromptKey PROMPT_KEYS[KEY_GRID_LAST_KEY + 1] = {
     [1] = {.icon = sprite_eye_small},
     [2] = {.icon = sprite_gemini_small,
            .splash = sprite_gemini_large,
@@ -46,25 +51,35 @@ static const prompt_key_t PROMPT_KEYS[KEY_GRID_LAST_KEY + 1] = {
     [12] = {.label = "ENTR"},
 };
 
-// what currently owns the screen instead of the grid
-typedef enum {
-  OVERLAY_NONE,
-  OVERLAY_SPLASH,
-  OVERLAY_FADE_IN,
-  OVERLAY_HOLD,
-  OVERLAY_FADE_OUT,
-} overlay_t;
+/** @brief What currently owns the screen instead of the grid. */
+typedef enum overlay_t {
+  OVERLAY_NONE,     // The grid is showing
+  OVERLAY_SPLASH,   // A tool's logo, while its macro runs
+  OVERLAY_FADE_IN,  // "MAKE NO MISTAKES." brightening
+  OVERLAY_HOLD,     // "MAKE NO MISTAKES." at full brightness
+  OVERLAY_FADE_OUT, // "MAKE NO MISTAKES." dimming
+} Overlay;
 
-static overlay_t overlay = OVERLAY_NONE;
+static Overlay overlay = OVERLAY_NONE;
 static uint32_t phase_start_ms;
 static uint32_t last_fade_step_ms;
 static uint32_t splash_until_ms;
 
+/**
+ * @brief Milliseconds since boot.
+ *
+ * @return Current time in ms.
+ */
 static uint32_t now_ms(void) { return to_ms_since_boot(get_absolute_time()); }
 
-static void draw_key(unsigned key) {
+/**
+ * @brief Draws one key's cell from its current state, with its icon or label.
+ *
+ * @param key Key number, 1 to 12.
+ */
+static void draw_key(uint key) {
   bool pressed = board_state_key(key);
-  const prompt_key_t *k = &PROMPT_KEYS[key];
+  const PromptKey *k = &PROMPT_KEYS[key];
 
   key_grid_draw_frame(key, pressed);
   if (k->icon != NULL)
@@ -76,21 +91,26 @@ static void draw_key(unsigned key) {
 
 void screen_prompt_draw(void) {
   canvas_clear();
-  for (unsigned key = KEY_GRID_FIRST_KEY; key <= KEY_GRID_LAST_KEY; key++)
+  for (uint key = KEY_GRID_FIRST_KEY; key <= KEY_GRID_LAST_KEY; key++)
     draw_key(key);
   canvas_present();
 }
 
-// logo on the left half, name centered in the right half
-static void show_splash(unsigned key) {
-  const prompt_key_t *k = &PROMPT_KEYS[key];
-  int half = CANVAS_WIDTH / 2;
+/**
+ * @brief Shows a tool's splash: logo on the left half, name centered in the
+ * right half.
+ *
+ * @param key Key number. Its PROMPT_KEYS entry must have a splash and name.
+ */
+static void show_splash(uint key) {
+  const PromptKey *k = &PROMPT_KEYS[key];
+  int16_t half = CANVAS_WIDTH / 2;
 
   canvas_clear();
   canvas_draw_bitmap(0, 0, k->splash, SPRITE_LARGE_WIDTH, SPRITE_LARGE_HEIGHT,
                      true);
-  int x = half + (half - canvas_text_width(k->name, TEXT_TALL)) / 2;
-  int y = (CANVAS_HEIGHT - canvas_text_height(TEXT_TALL)) / 2;
+  int16_t x = half + (half - canvas_text_width(k->name, TEXT_TALL)) / 2;
+  int16_t y = (CANVAS_HEIGHT - canvas_text_height(TEXT_TALL)) / 2;
   canvas_draw_text(x, y, k->name, TEXT_TALL, true);
   canvas_present();
 
@@ -98,16 +118,21 @@ static void show_splash(unsigned key) {
   splash_until_ms = now_ms() + SPLASH_HOLD_MS;
 }
 
-// the text is drawn at the lowest brightness, then fades in
+/**
+ * @brief Starts the "MAKE NO MISTAKES." fade.
+ *
+ * The text is drawn at the lowest brightness, then screen_prompt_task() fades
+ * it in.
+ */
 static void show_no_mistakes(void) {
   static const char *const lines[2] = {"MAKE NO", "MISTAKES."};
-  int line_height = canvas_text_height(TEXT_2X);
-  int y = (CANVAS_HEIGHT - (2 * line_height + NO_MISTAKES_LINE_GAP)) / 2;
+  int16_t line_height = canvas_text_height(TEXT_2X);
+  int16_t y = (CANVAS_HEIGHT - (2 * line_height + NO_MISTAKES_LINE_GAP)) / 2;
 
   canvas_set_contrast(0);
   canvas_clear();
   for (int i = 0; i < 2; i++) {
-    int x = (CANVAS_WIDTH - canvas_text_width(lines[i], TEXT_2X)) / 2;
+    int16_t x = (CANVAS_WIDTH - canvas_text_width(lines[i], TEXT_2X)) / 2;
     canvas_draw_text(x, y + i * (line_height + NO_MISTAKES_LINE_GAP), lines[i],
                      TEXT_2X, true);
   }
@@ -118,15 +143,18 @@ static void show_no_mistakes(void) {
   last_fade_step_ms = phase_start_ms;
 }
 
-// back to the grid at full brightness. the grid is drawn first, so a dimmed
-// screen never flashes the old picture
+/**
+ * @brief Ends a splash or fade and goes back to the grid at full brightness.
+ *
+ * The grid is drawn first, so a dimmed screen never flashes the old picture.
+ */
 static void end_overlay(void) {
   overlay = OVERLAY_NONE;
   screen_prompt_draw();
   canvas_set_contrast(CANVAS_CONTRAST_FULL);
 }
 
-void screen_prompt_on_key(unsigned key, bool pressed) {
+void screen_prompt_on_key(uint key, bool pressed) {
   if (key < KEY_GRID_FIRST_KEY || key > KEY_GRID_LAST_KEY)
     return;
 
@@ -152,8 +180,15 @@ void screen_prompt_on_key(unsigned key, bool pressed) {
   key_grid_present(key);
 }
 
-// brightness from 0 to full as `elapsed` goes from 0 to `total`. squared, so
-// it starts slow and creeps up
+/**
+ * @brief Brightness for a point in a fade.
+ *
+ * Squared, so it starts slow and creeps up.
+ *
+ * @param elapsed Time into the fade.
+ * @param total Length of the fade.
+ * @return 0 at the start, up to CANVAS_CONTRAST_FULL at @p total.
+ */
 static uint8_t fade_level(uint32_t elapsed, uint32_t total) {
   if (elapsed >= total)
     return CANVAS_CONTRAST_FULL;

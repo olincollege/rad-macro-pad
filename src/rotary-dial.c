@@ -1,3 +1,7 @@
+/**
+ * @file rotary-dial.c
+ * @brief Rotary dial setup and mode-changing interrupt.
+ */
 #include "rotary-dial.h"
 
 #include "hardware/gpio.h"

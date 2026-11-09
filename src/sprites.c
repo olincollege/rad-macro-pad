@@ -1,3 +1,7 @@
+/**
+ * @file sprites.c
+ * @brief Pixel art data for PROMPT ENGINEER mode.
+ */
 #include "sprites.h"
 
 // approved pixel art, in page format: one byte per column per 8 rows,

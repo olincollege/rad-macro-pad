@@ -1,5 +1,10 @@
+/**
+ * @file screen_debug.c
+ * @brief DEBUG mode's screen.
+ */
 #include "screen_debug.h"
 
+#include <inttypes.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -9,6 +14,7 @@
 #include "key_grid.h"
 #include "oled_canvas.h"
 #include "pico/time.h"
+#include "pico/types.h"
 #include "rotary-dial.h"
 
 // set by the dial's interrupt in rotary-dial.c
@@ -27,22 +33,32 @@ extern volatile Direction curr_dir;
 #define INFO_Y 20
 #define INFO_LINE_STEP 11
 
-// everything this screen shows, to tell when a redraw is needed
-typedef struct {
-  uint32_t keys_version;
-  bool terminal_open;
-  uint8_t dial_steps;
-  Direction dial_dir;
-  uint32_t dropped;
-} debug_view_t;
+/** @brief Everything this screen shows, to tell when a redraw is needed. */
+typedef struct debug_view_t {
+  uint32_t keys_version; // Includes the dial button
+  bool terminal_open;    // A terminal has the serial port open
+  uint8_t dial_steps;    // Steps toward the next mode change
+  Direction dial_dir;    // Last direction the dial turned
+  uint32_t dropped;      // Delayed telemetry prints
+} DebugView;
 
-static debug_view_t shown;
+static DebugView shown;
 static uint32_t last_refresh_ms;
 
+/**
+ * @brief Milliseconds since boot.
+ *
+ * @return Current time in ms.
+ */
 static uint32_t now_ms(void) { return to_ms_since_boot(get_absolute_time()); }
 
-static debug_view_t read_view(void) {
-  debug_view_t v = {
+/**
+ * @brief Reads everything this screen shows.
+ *
+ * @return The current view.
+ */
+static DebugView read_view(void) {
+  DebugView v = {
       .keys_version = board_state_version(),
       .terminal_open = debug_telemetry_terminal_open(),
       .dial_steps = turns_to_state_change,
@@ -52,18 +68,37 @@ static debug_view_t read_view(void) {
   return v;
 }
 
-static bool same_view(const debug_view_t *a, const debug_view_t *b) {
+/**
+ * @brief Compares two views.
+ *
+ * @param a First view.
+ * @param b Second view.
+ * @return true if nothing differs.
+ */
+static bool same_view(const DebugView *a, const DebugView *b) {
   return a->keys_version == b->keys_version &&
          a->terminal_open == b->terminal_open &&
          a->dial_steps == b->dial_steps && a->dial_dir == b->dial_dir &&
          a->dropped == b->dropped;
 }
 
-static void draw_info_line(int line, const char *text) {
+/**
+ * @brief Draws one line of the status column on the right.
+ *
+ * @param line Line number, 0 at the top.
+ * @param text Null-terminated text.
+ */
+static void draw_info_line(uint8_t line, const char *text) {
   canvas_draw_text(INFO_X, INFO_Y + line * INFO_LINE_STEP, text, TEXT_1X, true);
 }
 
-static void draw(const debug_view_t *v) {
+/**
+ * @brief Draws the whole screen and sends it.
+ *
+ * @param v View to draw the status lines from. The key map is read live from
+ *          board_state.
+ */
+static void draw(const DebugView *v) {
   char text[16];
 
   canvas_clear();
@@ -73,10 +108,12 @@ static void draw(const debug_view_t *v) {
                    TITLE_Y, title, TEXT_2X, true);
 
   // a small copy of the key layout. filled squares are held keys
-  for (unsigned key = KEY_GRID_FIRST_KEY; key <= KEY_GRID_LAST_KEY; key++) {
-    unsigned index = key - KEY_GRID_FIRST_KEY;
-    int x = MINI_X + (int)(index % MINI_COLUMNS) * (MINI_BOX + MINI_GAP);
-    int y = MINI_Y + (int)(index / MINI_COLUMNS) * (MINI_BOX + MINI_GAP);
+  for (uint key = KEY_GRID_FIRST_KEY; key <= KEY_GRID_LAST_KEY; key++) {
+    uint index = key - KEY_GRID_FIRST_KEY;
+    int16_t x =
+        MINI_X + (int16_t)(index % MINI_COLUMNS) * (MINI_BOX + MINI_GAP);
+    int16_t y =
+        MINI_Y + (int16_t)(index / MINI_COLUMNS) * (MINI_BOX + MINI_GAP);
     if (board_state_key(key))
       canvas_fill_rect(x, y, MINI_BOX, MINI_BOX, true);
     else
@@ -85,13 +122,13 @@ static void draw(const debug_view_t *v) {
 
   snprintf(text, sizeof(text), "TERM %s", v->terminal_open ? "OPEN" : "SHUT");
   draw_info_line(0, text);
-  snprintf(text, sizeof(text), "DIAL %u/%u %c", (unsigned)v->dial_steps,
-           (unsigned)MAX_STEPS, v->dial_dir == CLOCKWISE ? '>' : '<');
+  snprintf(text, sizeof(text), "DIAL %u/%u %c", (uint)v->dial_steps,
+           (uint)MAX_STEPS, v->dial_dir == CLOCKWISE ? '>' : '<');
   draw_info_line(1, text);
   snprintf(text, sizeof(text), "BTN  %s",
            board_state_key(DIAL_BUTTON_KEY) ? "DN" : "UP");
   draw_info_line(2, text);
-  snprintf(text, sizeof(text), "DROP %lu", (unsigned long)v->dropped);
+  snprintf(text, sizeof(text), "DROP %" PRIu32, v->dropped);
   draw_info_line(3, text);
 
   canvas_present();
@@ -109,7 +146,7 @@ void screen_debug_task(void) {
     return;
   last_refresh_ms = now;
 
-  debug_view_t current = read_view();
+  DebugView current = read_view();
   if (same_view(&current, &shown))
     return;
 
