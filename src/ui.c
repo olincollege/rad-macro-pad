@@ -1,9 +1,14 @@
+/**
+ * @file ui.c
+ * @brief Screen coordinator.
+ */
 #include "ui.h"
 
 #include <stdint.h>
 
 #include "mode_transition.h"
 #include "oled_canvas.h"
+#include "pico/types.h"
 #include "rotary-dial.h"
 #include "screen_debug.h"
 #include "screen_numpad.h"
@@ -13,6 +18,11 @@
 // one loop pass
 static int8_t target_mode;
 
+/**
+ * @brief Draws a mode's screen.
+ *
+ * @param mode NUMPAD, PROMPT_ENGINEER or DEBUG.
+ */
 static void draw_mode(int8_t mode) {
   switch (mode) {
   case NUMPAD:
@@ -58,7 +68,7 @@ void ui_task(void) {
     screen_debug_task();
 }
 
-void ui_on_key(unsigned key, bool pressed) {
+void ui_on_key(uint key, bool pressed) {
   // during the animation keys still work; the screen catches up when it ends
   if (mode_transition_running())
     return;

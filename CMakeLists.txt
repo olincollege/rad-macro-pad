@@ -44,7 +44,7 @@ add_executable(rad-macro-pad
 )
 
 target_include_directories(rad-macro-pad
-    PUBLIC
+    PRIVATE
         inc
         rp2040-oled-spi/include
 )
@@ -56,24 +56,10 @@ pico_set_program_version(rad-macro-pad "0.1")
 pico_enable_stdio_uart(rad-macro-pad 0)
 pico_enable_stdio_usb(rad-macro-pad 0)
 
-# Add the standard library to the build
-
-#include "gfx.h"
-#include "hardware/gpio.h"
-#include "hardware/spi.h"
-#include "inc/key_switches.h"
-#include "inc/usb_hid_keyboard.h"
-#include "pico/stdio.h"
-#include "pico/stdlib.h"
-#include "rotary-dial.h"
-#include "rp2040-oled-types.h"
-#include "rp2040-oled.h"
-#include <pico/time.h>
-#include <stdio.h>
-
+# pico_stdlib stays here: it brings in the SDK runtime and boot code that every
+# Pico executable needs
 target_link_libraries(rad-macro-pad
-    PUBLIC
-        oled-gfx
+    PRIVATE
         rp2040-oled
         hardware_gpio
         hardware_spi

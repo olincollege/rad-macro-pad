@@ -1,12 +1,13 @@
+/**
+ * @file usb_cdc_comms.c
+ * @brief Non-blocking USB CDC printing.
+ */
 #include "usb_cdc_comms.h"
 
 #include "pico/util/queue.h"
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdio.h>
-
-#include <stdlib.h>
-#include <string.h>
 
 #include "tusb.h"
 
@@ -26,6 +27,15 @@ void usb_cdc_init(void) {
   queue_init(&print_queue, (uint)sizeof(LineUnit), QUEUE_SIZE);
 }
 
+/**
+ * @brief Sends as much of the queued text as the CDC buffer has room for.
+ *
+ * Takes the next message off the queue if none is in progress. A message that
+ * doesn't fit is sent in pieces over later calls. Resets the pool once the
+ * queue is empty.
+ *
+ * @return false if the CDC buffer was full, true otherwise.
+ */
 static bool cdc_write_process(void) {
   if (!partial_packet) {
     if (queue_is_empty(&print_queue)) {
@@ -86,7 +96,7 @@ bool printf_cdc(const char *format, ...) {
   size_t space = wrapped ? oldest_message_index - current_pool_index
                          : PRINT_DATA_STORAGE_SIZE - current_pool_index;
 
-  int length = vsnprintf(&print_data_pool[start], space, format, args);
+  int32_t length = vsnprintf(&print_data_pool[start], space, format, args);
 
   // second try: go back to index 0 and use the gap before the oldest message
   // length < oldest_message_index leaves room for the '\0'
@@ -117,6 +127,15 @@ bool println_cdc(const char *print_data) {
   return printf_cdc("%s\r\n", print_data);
 }
 
+/**
+ * @brief TinyUSB callback for when the terminal's DTR/RTS lines change.
+ *
+ * Unused for now.
+ *
+ * @param itf CDC interface number.
+ * @param dtr Data terminal ready.
+ * @param rts Request to send.
+ */
 void tud_cdc_line_state_cb(uint8_t itf, bool dtr, bool rts) {
   (void)itf;
   (void)dtr;
@@ -130,6 +149,13 @@ void usb_cdc_task(void) {
   cdc_write_process();
 }
 
+/**
+ * @brief TinyUSB callback for when the host suspends the bus.
+ *
+ * Empties the print queue and pool.
+ *
+ * @param remote_wakeup_en Whether the host allows remote wakeup (unused).
+ */
 void tud_suspend_cb(bool remote_wakeup_en) {
   (void)remote_wakeup_en;
   // Flush our local structures so old prints don't instantly burst

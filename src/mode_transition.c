@@ -1,3 +1,7 @@
+/**
+ * @file mode_transition.c
+ * @brief Mode change slide animation.
+ */
 #include "mode_transition.h"
 
 #include "oled_canvas.h"
@@ -22,12 +26,24 @@ static uint32_t start_ms;
 static uint32_t last_frame_ms;
 static bool final_frame_drawn;
 
+/**
+ * @brief Milliseconds since boot.
+ *
+ * @return Current time in ms.
+ */
 static uint32_t now_ms(void) { return to_ms_since_boot(get_absolute_time()); }
 
-// the mode's name in big text, centered, moved sideways by offset_x
-static void draw_title(int8_t mode, int offset_x) {
+/**
+ * @brief Draws a mode's name in big text, centered above the dots.
+ *
+ * PROMPT ENGINEER takes two lines.
+ *
+ * @param mode Mode whose name to draw.
+ * @param offset_x Pixels to move the name sideways from center.
+ */
+static void draw_title(int8_t mode, int16_t offset_x) {
   const char *lines[2];
-  int count = 1;
+  uint8_t count = 1;
 
   switch (mode) {
   case NUMPAD:
@@ -43,21 +59,25 @@ static void draw_title(int8_t mode, int offset_x) {
     break;
   }
 
-  int line_height = canvas_text_height(TEXT_2X);
-  int total_height = count * line_height + (count - 1) * TITLE_LINE_GAP;
-  int y = (TITLE_AREA_HEIGHT - total_height) / 2;
+  int16_t line_height = canvas_text_height(TEXT_2X);
+  int16_t total_height = count * line_height + (count - 1) * TITLE_LINE_GAP;
+  int16_t y = (TITLE_AREA_HEIGHT - total_height) / 2;
 
   for (int i = 0; i < count; i++) {
-    int x = offset_x + (CANVAS_WIDTH - canvas_text_width(lines[i], TEXT_2X)) / 2;
+    int16_t x = offset_x + (CANVAS_WIDTH - canvas_text_width(lines[i], TEXT_2X)) / 2;
     canvas_draw_text(x, y + i * (line_height + TITLE_LINE_GAP), lines[i],
                      TEXT_2X, true);
   }
 }
 
-// one dot per mode, left to right. the current one is filled
+/**
+ * @brief Draws one dot per mode along the bottom, left to right.
+ *
+ * @param mode Mode whose dot is filled. The others are outlines.
+ */
 static void draw_dots(int8_t mode) {
-  int total_width = MODE_COUNT * DOT_SIZE + (MODE_COUNT - 1) * DOT_GAP;
-  int x = (CANVAS_WIDTH - total_width) / 2;
+  int16_t total_width = MODE_COUNT * DOT_SIZE + (MODE_COUNT - 1) * DOT_GAP;
+  int16_t x = (CANVAS_WIDTH - total_width) / 2;
 
   for (int i = 0; i < MODE_COUNT; i++) {
     if (i == mode - NUMPAD)
@@ -68,6 +88,14 @@ static void draw_dots(int8_t mode) {
   }
 }
 
+/**
+ * @brief Draws and sends one frame of the animation.
+ *
+ * During the slide, both names are drawn with an ease-out. After it, only the
+ * new name is drawn.
+ *
+ * @param elapsed_ms Time since the animation started.
+ */
 static void draw_frame(uint32_t elapsed_ms) {
   canvas_clear();
 
@@ -78,10 +106,10 @@ static void draw_frame(uint32_t elapsed_ms) {
     float progress = (float)elapsed_ms / SLIDE_MS;
     float remaining = 1.0f - progress;
     float eased = 1.0f - remaining * remaining * remaining;
-    int shift = (int)(eased * CANVAS_WIDTH);
+    int16_t shift = (int16_t)(eased * CANVAS_WIDTH);
 
     // moving forward slides everything left, moving back slides it right
-    int direction = (to_mode > from_mode) ? -1 : 1;
+    int8_t direction = (to_mode > from_mode) ? -1 : 1;
     draw_title(from_mode, direction * shift);
     draw_title(to_mode, direction * (shift - CANVAS_WIDTH));
   }

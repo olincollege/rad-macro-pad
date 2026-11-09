@@ -1,3 +1,7 @@
+/**
+ * @file oled_canvas.c
+ * @brief The canvas framebuffer and its drawing functions.
+ */
 #include "oled_canvas.h"
 
 #include <string.h>
@@ -25,7 +29,7 @@ void canvas_init(rp2040_oled_t *oled) {
 
 void canvas_clear(void) { memset(canvas, 0x00, sizeof(canvas)); }
 
-void canvas_set_pixel(int x, int y, bool on) {
+void canvas_set_pixel(int16_t x, int16_t y, bool on) {
   if (x < 0 || x >= CANVAS_WIDTH || y < 0 || y >= CANVAS_HEIGHT)
     return;
 
@@ -37,26 +41,26 @@ void canvas_set_pixel(int x, int y, bool on) {
     *byte &= (uint8_t)~mask;
 }
 
-bool canvas_get_pixel(int x, int y) {
+bool canvas_get_pixel(int16_t x, int16_t y) {
   if (x < 0 || x >= CANVAS_WIDTH || y < 0 || y >= CANVAS_HEIGHT)
     return false;
 
   return (canvas[(y / 8) * CANVAS_WIDTH + x] >> (y % 8)) & 1u;
 }
 
-void canvas_fill_rect(int x, int y, int w, int h, bool on) {
+void canvas_fill_rect(int16_t x, int16_t y, int16_t w, int16_t h, bool on) {
   for (int yy = y; yy < y + h; yy++)
     for (int xx = x; xx < x + w; xx++)
       canvas_set_pixel(xx, yy, on);
 }
 
-void canvas_invert_rect(int x, int y, int w, int h) {
+void canvas_invert_rect(int16_t x, int16_t y, int16_t w, int16_t h) {
   for (int yy = y; yy < y + h; yy++)
     for (int xx = x; xx < x + w; xx++)
       canvas_set_pixel(xx, yy, !canvas_get_pixel(xx, yy));
 }
 
-void canvas_outline_rect(int x, int y, int w, int h, bool on) {
+void canvas_outline_rect(int16_t x, int16_t y, int16_t w, int16_t h, bool on) {
   if (w <= 0 || h <= 0)
     return;
 
@@ -69,20 +73,46 @@ void canvas_outline_rect(int x, int y, int w, int h, bool on) {
 // extra pixels between tall characters, which otherwise look squished
 #define TALL_LETTER_SPACING 2
 
-// how much each font pixel is stretched for a text size
-static void text_scale(canvas_text_size_t size, int *sx, int *sy) {
+/**
+ * @brief Gets how much each font pixel is stretched for a text size.
+ *
+ * @param size Text size.
+ * @param[out] sx Horizontal scale.
+ * @param[out] sy Vertical scale.
+ */
+static void text_scale(CanvasTextSize size, uint8_t *sx, uint8_t *sy) {
   *sx = (size == TEXT_2X) ? 2 : 1;
   *sy = (size == TEXT_1X) ? 1 : 2;
 }
 
-// distance from one character's left edge to the next one's
-static int text_advance(canvas_text_size_t size, int sx) {
-  int spacing = (size == TEXT_TALL) ? TALL_LETTER_SPACING : 0;
+/**
+ * @brief Distance from one character's left edge to the next one's.
+ *
+ * @param size Text size.
+ * @param sx Horizontal scale from text_scale().
+ * @return Distance in pixels.
+ */
+static int16_t text_advance(CanvasTextSize size, uint8_t sx) {
+  int16_t spacing = (size == TEXT_TALL) ? TALL_LETTER_SPACING : 0;
   return FONT_ADVANCE * sx + spacing;
 }
 
-static void draw_char(int x, int y, char c, int sx, int sy, bool on) {
-  int index = (unsigned char)c - FONT_FIRST_CHAR;
+/**
+ * @brief Draws one character, scaled.
+ *
+ * Only lit font pixels are drawn. Characters the font doesn't have are drawn
+ * as '?'.
+ *
+ * @param x Left edge.
+ * @param y Top edge.
+ * @param c Character to draw.
+ * @param sx Horizontal scale.
+ * @param sy Vertical scale.
+ * @param on Color of the character: true for lit, false for dark.
+ */
+static void draw_char(int16_t x, int16_t y, char c, uint8_t sx, uint8_t sy,
+                      bool on) {
+  int16_t index = (uint8_t)c - FONT_FIRST_CHAR;
   if (index < 0 || index >= FONT_GLYPH_COUNT)
     index = '?' - FONT_FIRST_CHAR; // characters the font doesn't have
 
@@ -93,42 +123,42 @@ static void draw_char(int x, int y, char c, int sx, int sy, bool on) {
         canvas_fill_rect(x + col * sx, y + row * sy, sx, sy, on);
 }
 
-void canvas_draw_text(int x, int y, const char *text, canvas_text_size_t size,
-                      bool on) {
-  int sx, sy;
+void canvas_draw_text(int16_t x, int16_t y, const char *text,
+                      CanvasTextSize size, bool on) {
+  uint8_t sx, sy;
   text_scale(size, &sx, &sy);
 
-  int advance = text_advance(size, sx);
+  int16_t advance = text_advance(size, sx);
   for (int i = 0; text[i] != '\0'; i++)
     draw_char(x + i * advance, y, text[i], sx, sy, on);
 }
 
-int canvas_text_width(const char *text, canvas_text_size_t size) {
-  int sx, sy;
+int16_t canvas_text_width(const char *text, CanvasTextSize size) {
+  uint8_t sx, sy;
   text_scale(size, &sx, &sy);
 
-  int len = (int)strlen(text);
+  int16_t len = (int16_t)strlen(text);
   // every character's step, except the last one, which only counts its
   // visible columns
   return len == 0 ? 0
                   : (len - 1) * text_advance(size, sx) + FONT_GLYPH_COLUMNS * sx;
 }
 
-int canvas_text_height(canvas_text_size_t size) {
-  int sx, sy;
+int16_t canvas_text_height(CanvasTextSize size) {
+  uint8_t sx, sy;
   text_scale(size, &sx, &sy);
   return FONT_VISIBLE_ROWS * sy;
 }
 
-void canvas_draw_bitmap(int x, int y, const uint8_t *bitmap, int w, int h,
-                        bool on) {
+void canvas_draw_bitmap(int16_t x, int16_t y, const uint8_t *bitmap,
+                        int16_t w, int16_t h, bool on) {
   for (int yy = 0; yy < h; yy++)
     for (int xx = 0; xx < w; xx++)
       if ((bitmap[(yy / 8) * w + xx] >> (yy % 8)) & 1u)
         canvas_set_pixel(x + xx, y + yy, on);
 }
 
-void canvas_present_rect(int x, int y, int w, int h) {
+void canvas_present_rect(int16_t x, int16_t y, int16_t w, int16_t h) {
   if (canvas_oled == NULL)
     return;
 
@@ -150,8 +180,8 @@ void canvas_present_rect(int x, int y, int w, int h) {
 
   // copy each touched page into the library's framebuffer, overwriting the
   // bytes there, then send only the columns that changed
-  int first_page = y / 8;
-  int last_page = (y + h - 1) / 8;
+  uint8_t first_page = y / 8;
+  uint8_t last_page = (y + h - 1) / 8;
   for (int page = first_page; page <= last_page; page++)
     rp2040_oled_draw_sprite(canvas_oled, &canvas[page * CANVAS_WIDTH + x],
                             (int16_t)x, (int16_t)(page * 8), (uint8_t)w, 8,
