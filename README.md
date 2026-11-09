@@ -31,13 +31,23 @@ Jacob:
 
 ### Numpad mode
 
+![Numpad mode](media/numpad.jpg)
+
 ### "Prompt Engineer" mode
+
+![Prompt engineer mode](media/prompt_engineer.jpg)
 
 ### Debug Mode
 
+![Debug mode](media/debug.jpg)
+
 ### Transition
 
+![Transition](media/transition.gif)
+
 ### "Make No Mistakes."
+
+![Transition](media/make_no_mistakes.jpg)
 
 ### `rp2040-oled-spi`
 The display built into the Adafruit RP2040 MacroPad uses SPI to communicate with the SH1106 display driver. There were not existing drivers available for this, so we decided to find one similar. This allowed us to focus less on the implementation of writing everything to the display, but still required us to understand the display driver and learn how to communicate with it. [@sm00th](https://github.com/sm00th) created a OLED driver that communicates over I^2C, and so we forked that driver and rewrote it to communicate over SPI, which results in a significant speed boost (updates possible every 26ms -> updates possible every 1ms). Implementation is documented and detailed in [`rp2040-oled-spi`](https://github.com/foxwithahdie/rp2040-oled-spi).
