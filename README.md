@@ -18,8 +18,26 @@ We aimed to re-create the core functionality one would expect from a macropad as
 - Inject keystrokes over USB
 - Create a debug tool that communicates via USB
 
+## Personal Goals
+
+Ram: I approached this project wanting to learn about PIO, but with the speeds in which we were writing to the display, that ended up not being useful. However, learning how to work with other's code and create new things from it was a powerful tool. I also wanted to learn more about communicating over USB through something like CDC, and I learned exactly what that was. Before, it was a black box, but now I understand that it is extremely similar to UART, just in the context of the USB protocol.
+
+Jacob:
+
 ## System Architecture
 ![System Architecture and state diagram](media/architecture.png)
+
+## Pictures
+
+### Numpad mode
+
+### "Prompt Engineer" mode
+
+### Debug Mode
+
+### Transition
+
+### "Make No Mistakes."
 
 ### `rp2040-oled-spi`
 The display built into the Adafruit RP2040 MacroPad uses SPI to communicate with the SH1106 display driver. There were not existing drivers available for this, so we decided to find one similar. This allowed us to focus less on the implementation of writing everything to the display, but still required us to understand the display driver and learn how to communicate with it. [@sm00th](https://github.com/sm00th) created a OLED driver that communicates over I^2C, and so we forked that driver and rewrote it to communicate over SPI, which results in a significant speed boost (updates possible every 26ms -> updates possible every 1ms). Implementation is documented and detailed in [`rp2040-oled-spi`](https://github.com/foxwithahdie/rp2040-oled-spi).
@@ -32,7 +50,9 @@ The Adafruit RP2040 MacroPad does not come with a UART to USB bridge, so to comm
 
 ## Debugging Experience
 
-One main section that caused an issue was the USB-CDC printing/queuing.
+One main section that caused an issue was the USB-CDC printing/queuing. Originally, with the way that the printing data pool worked, you could have multiple messages in the queue and initially write over them, which caused some weird garbling issues while printing because making new data messed with the previous unsent data. To combat this, there is a built in refusal return, which doesn't allow printing if there isn't enough space in the printing pool, and checks the end and beginning of the printing pool to confirm if the data that is there has already been sent or if it is actively in the queue.
+
+
 
 ## Future Work
 There were a few cool features that we didn't have a chance to implement within the scope of this project:
