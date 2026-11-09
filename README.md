@@ -22,7 +22,7 @@ We aimed to re-create the core functionality one would expect from a macropad as
 
 Ram: I approached this project wanting to learn about PIO, but with the speeds in which we were writing to the display, that ended up not being useful. However, learning how to work with other's code and create new things from it was a powerful tool. I also wanted to learn more about communicating over USB through something like CDC, and I learned exactly what that was. Before, it was a black box, but now I understand that it is extremely similar to UART, just in the context of the USB protocol.
 
-Jacob:
+Jacob: I was looking forward to the chance to write embedded C code in a different application than I have done previously. One of my primary learning goals was learning how to interact with a computer using the USB protocol. I also wanted the final product to be complete and polished. Looking back, I feel that I met my learning goals and am happy with our final product.
 
 ## System Architecture
 ![System Architecture and state diagram](media/architecture.png)
@@ -62,7 +62,9 @@ The Adafruit RP2040 MacroPad does not come with a UART to USB bridge, so to comm
 
 One main section that caused an issue was the USB-CDC printing/queuing. Originally, with the way that the printing data pool worked, you could have multiple messages in the queue and initially write over them, which caused some weird garbling issues while printing because making new data messed with the previous unsent data. To combat this, there is a built in refusal return, which doesn't allow printing if there isn't enough space in the printing pool, and checks the end and beginning of the printing pool to confirm if the data that is there has already been sent or if it is actively in the queue.
 
+## Design Decisions
 
+Originally, the key press interactions were built using interrupts to form an event-driven architecture. However, due to the mechanical "bounce" of key switches, a single key press results in a number of rising and falling edges. To continue with an interrupt-defined architecture, we would have to debounce each of the keys. We decided that the artificial latency added by debouncing would nullify the benefit of an event-driven architecture. Instead we opted for a polling strategy, where each key is polled every 5ms, much faster than a human can perceive. This approach simplifies the code and is the same strategy taken by existing keyboard firmware, such as QMK.
 
 ## Future Work
 There were a few cool features that we didn't have a chance to implement within the scope of this project:
