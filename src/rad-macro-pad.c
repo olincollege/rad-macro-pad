@@ -27,6 +27,7 @@ void on_key_event(unsigned int key_index, bool is_pressed) {
   board_state_set_key(key_index, is_pressed);
   ui_on_key(key_index, is_pressed);
 
+  // finite state machine based on current state.
   switch (state) {
   case (NUMPAD):
     if (is_pressed) {
@@ -44,6 +45,7 @@ void on_key_event(unsigned int key_index, bool is_pressed) {
         usb_hid_release_key();
       }
     }
+    // keys 1-5 are macros
     if (is_pressed) {
       if (key_index >= 1 && key_index <= 5) {
         inject_macro((macro_id_t)key_index);
@@ -51,7 +53,7 @@ void on_key_event(unsigned int key_index, bool is_pressed) {
     }
     break;
   default: // state = DEBUG
-           // TODO
+      // Nothing to do here
   }
 }
 
@@ -99,11 +101,21 @@ int main(void) {
       .use_doublebuf = false,
   };
 
-  init(&oled);
+  rp2040_oled_init(&oled);
+  ui_init(&oled);
+
+  // Initialize GPIO for keys
+  key_switch_init();
+  // Assign on_key_event as the callback function for key events
+  key_switch_register_callback(on_key_event);
+
+  // Initialize USB HID stack
+  usb_hid_init();
+
+  usb_cdc_init();
 
   uint32_t last_key_poll = 0;
   const uint32_t poll_interval_ms = 5; // Poll every 5ms
-
   while (true) {
     // redraws the screen when the mode changes
     ui_task();
@@ -119,7 +131,7 @@ int main(void) {
       // Run TinyUSB background engine continuously with 0ms latency
       usb_hid_task();
 
-      // Non-blocking timer check for key switch polling
+      // Non-blocking timer poll key switches
       uint32_t now = to_ms_since_boot(get_absolute_time());
       if (now - last_key_poll >= poll_interval_ms) {
         last_key_poll = now;
